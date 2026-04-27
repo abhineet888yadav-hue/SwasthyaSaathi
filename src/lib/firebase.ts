@@ -1,0 +1,16 @@
+import { initializeApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
+
+const firebaseConfig = {
+  apiKey: "3ad269bac18d24a496a2fd417f90940c",
+  authDomain: "swasthyasaathi-ccb41.firebaseapp.com",
+  projectId: "swasthyasaathi-ccb41",
+  storageBucket: "swasthyasaathi-ccb41.firebasestorage.app",
+  messagingSenderId: "992099353482",
+  appId: "1:992099353482:web:608dc33277b63225fcfe73"
+};
+
+const app = initializeApp(firebaseConfig);
+console.log("Firebase initialized:", app.name);
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
