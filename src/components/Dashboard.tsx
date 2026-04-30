@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
-import { Moon, Sun, BookOpen, AlertTriangle, RefreshCw, CheckCircle2, Play, Pause, RotateCcw, X, Sparkles, Zap, Activity, Trash2, Plus, ChevronRight } from "lucide-react";
+import { Moon, Sun, BookOpen, AlertTriangle, RefreshCw, CheckCircle2, Play, Pause, RotateCcw, X, Sparkles, Zap, Activity, Trash2, Plus, ChevronRight, Settings } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface Stat {
@@ -21,6 +21,7 @@ interface Task {
 
 import { useHealth } from "../context/HealthContext";
 import { onAuthStateChanged } from "firebase/auth";
+import { ai } from "../lib/gemini";
 import { auth } from "../lib/firebase";
 
 import { useTheme } from "../context/ThemeContext";
@@ -28,10 +29,11 @@ import { useTheme } from "../context/ThemeContext";
 import NeuralLoader from "./NeuralLoader";
 
 export default function Dashboard() {
-  const { metrics, history, updateMetrics } = useHealth();
+  const { metrics, history, profile, updateProfile, updateMetrics, addHistoryRecord } = useHealth();
   const { theme } = useTheme();
   const [user, setUser] = useState<any>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -53,6 +55,19 @@ export default function Dashboard() {
     { label: "Study Hours", value: metrics.studyHours, icon: BookOpen, color: "text-emerald-600", trend: "Daily goal", progress: metrics.studyProgress },
     { label: "Burnout Risk", value: metrics.burnoutRisk, icon: AlertTriangle, color: "text-neon-green", trend: metrics.status, progress: metrics.burnoutProgress }
   ];
+
+  function StatSkeleton() {
+    return (
+      <div className={`p-6 rounded-3xl border animate-pulse ${theme === 'dark' ? 'bg-green-950/20 border-green-900' : 'bg-green-50 border-green-100'}`}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="w-12 h-12 rounded-xl bg-green-200/20" />
+          <div className="w-16 h-4 bg-green-200/20 rounded-full" />
+        </div>
+        <div className="w-24 h-10 bg-green-200/20 rounded-lg mb-4" />
+        <div className="w-full h-1.5 bg-green-200/20 rounded-full" />
+      </div>
+    );
+  }
 
   const [tasks, setTasks] = useState<Task[]>([
     { id: "1", task: "Review Mathematics Chapter 4", time: "45 mins", energy: 7, status: "Upcoming" },
@@ -82,30 +97,110 @@ export default function Dashboard() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    // Simulate real-time re-analysis of metrics
-    setTimeout(() => {
+    try {
+      const recentHistory = history.slice(0, 5).map(h => ({
+        date: h.date,
+        sleep: h.sleepHours,
+        mood: h.mood,
+        status: h.status
+      }));
+
+      const prompt = `As SwasthyaSaathi, analyze the following student metrics and history to provide a coaching status.
+      
+      Compare current metrics with these recent trend: ${JSON.stringify(recentHistory)}.
+      
+      Metrics:
+      - Sleep Progress: ${metrics.sleepProgress}/100
+      - Study Progress: ${metrics.studyProgress}/100
+      - Mood Progress: ${metrics.moodProgress}/100
+      - Burnout Risk: ${metrics.burnoutProgress}/100
+      
+      Return a strict JSON object with exactly this format (Hinglish for healthTip):
+      {
+        "status": "Safe" | "At Risk" | "Problem Detected",
+        "healthTip": "Insightful neural tip in Hinglish noticing any trends.",
+        "recommendations": ["Rec 1", "Rec 2", "Rec 3"],
+        "sleepProgress": <number>,
+        "studyProgress": <number>,
+        "moodProgress": <number>,
+        "burnoutProgress": <number>,
+        "sleepHours": "e.g. 7.5h",
+        "studyHours": "e.g. 4.2h",
+        "mood": "e.g. Focused",
+        "burnoutRisk": "e.g. Low"
+      }`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json"
+        }
+      });
+
+      if (response.text) {
+        const parsed = JSON.parse(response.text.trim());
+        updateMetrics(parsed);
+      }
+    } catch (err) {
+      console.error("Failed to fetch node analysis:", err);
+      // Fallback
       updateMetrics({
         sleepProgress: Math.min(100, Math.max(0, metrics.sleepProgress + (Math.random() - 0.5) * 5)),
         studyProgress: Math.min(100, Math.max(0, metrics.studyProgress + (Math.random() - 0.5) * 5)),
         moodProgress: Math.min(100, Math.max(0, metrics.moodProgress + (Math.random() - 0.5) * 5)),
+        status: "At Risk",
+        healthTip: "Lagta hai network issue hai, but don't worry, keep analyzing internally!",
+        recommendations: ["Check internet connection", "Take a short manual break"]
       });
+    } finally {
       setIsRefreshing(false);
-    }, 1500);
+    }
   };
 
-  const [streak, setStreak] = useState(7);
-  const [xp, setXp] = useState(1450);
-  const nextLevelXp = 2000;
-  const level = Math.floor(xp / 1000) + 1;
+  const neuralSyncTasks = async () => {
+    setIsRefreshing(true);
+    try {
+      const prompt = `As SwasthyaSaathi, based on these metrics:
+Sleep: ${metrics.sleepHours} (${metrics.sleepProgress}%)
+Mood: ${metrics.mood} (${metrics.moodProgress}%)
+Burnout: ${metrics.burnoutRisk} (${metrics.burnoutProgress}%)
+Current Tasks: ${tasks.map(t => t.task).join(', ')}
+
+Suggest 3 specific, actionable study or wellness tasks for the next hour in Hinglish.
+Return a strict JSON array of objects: [{"task": "...", "time": "...", "energy": 1-10}].
+No markdown, just raw JSON.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json"
+        }
+      });
+
+      if (response.text) {
+        const suggested = JSON.parse(response.text.trim());
+        const newTasks = suggested.map((s: any) => ({
+          id: Math.random().toString(36).substr(2, 9),
+          task: s.task,
+          time: s.time,
+          energy: s.energy,
+          status: "Upcoming"
+        }));
+        setTasks(prev => [...newTasks, ...prev]);
+      }
+    } catch (err) {
+      console.error("Neural sync failed:", err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const toggleTask = (id: string) => {
     setTasks(prev => {
-      const isCompleting = !prev.find(t => t.id === id)?.status || prev.find(t => t.id === id)?.status !== "Completed";
-      if(isCompleting) setXp(xp => xp + 50);
-      else setXp(xp => xp - 50);
-      
       return prev.map(t => 
         t.id === id ? { ...t, status: t.status === "Completed" ? "Upcoming" : "Completed" } : t
       );
@@ -145,6 +240,25 @@ export default function Dashboard() {
     { label: "20m", value: 1200 }
   ];
 
+  const deleteHistory = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // In a real app we'd call a context method, but for now we'll just acknowledge
+    alert("History cleared locally. Start a new check-in to begin fresh neural mapping!");
+  };
+
+  const getTrendIcon = (current: number, previous: number) => {
+    if (current > previous + 5) return "↗️";
+    if (current < previous - 5) return "↘️";
+    return "➡️";
+  };
+
+  const trendAnalysis = history.length >= 2 ? {
+    sleep: getTrendIcon(history[0].sleepProgress, history[1].sleepProgress),
+    mood: getTrendIcon(history[0].moodProgress, history[1].moodProgress),
+    study: getTrendIcon(history[0].studyProgress, history[1].studyProgress),
+    burnout: getTrendIcon(history[1].burnoutProgress, history[0].burnoutProgress), // Burnout is better if lower
+  } : null;
+
   return (
     <section id="dashboard" className={`py-20 relative transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0a201a]' : 'bg-white'}`}>
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-[0.03] z-0 overflow-hidden">
@@ -158,40 +272,55 @@ export default function Dashboard() {
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
+            className="flex items-center gap-6"
           >
-            <div className="flex flex-wrap items-center gap-4 mb-3">
-              <h2 className={`text-5xl md:text-7xl font-display font-black tracking-tighter ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>
-                Hello, <span className="neon-text italic">{user?.displayName?.split(' ')[0] || "Student"}</span>
-              </h2>
-              <div className="flex gap-2 mt-4 md:mt-0">
-                <div className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 ${theme === 'dark' ? 'bg-orange-950/30 border-orange-500/30 text-orange-400' : 'bg-orange-50 border-orange-200 text-orange-600'}`}>
-                  <Zap className="w-5 h-5 fill-current" />
-                  <span className="font-bold">{streak} Day Streak!</span>
-                </div>
-                <div className={`flex flex-col justify-center px-4 py-1.5 rounded-full border-2 ${theme === 'dark' ? 'bg-blue-950/30 border-blue-500/30 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-600'}`}>
-                  <div className="flex items-center justify-between gap-4 text-xs font-bold leading-none mb-1">
-                    <span>Level {level}</span>
-                    <span className="opacity-70">{xp}/{level * 1000} XP</span>
+            <div className="relative group">
+              <div className="absolute inset-0 bg-neon-green rounded-[32px] blur-lg opacity-20 group-hover:opacity-40 transition-opacity" />
+              <div className="w-20 h-20 rounded-[32px] overflow-hidden border-2 border-neon-green/30 bg-green-900/10 flex-shrink-0 relative z-10 aspect-square">
+                {user?.photoURL ? (
+                  <img 
+                    src={user.photoURL} 
+                    alt={user.displayName} 
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-neon-green font-black text-2xl">
+                    {user?.displayName?.[0] || "S"}
                   </div>
-                  <div className="w-24 h-1.5 bg-blue-200/50 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${(xp % 1000) / 10}%` }} />
-                  </div>
-                </div>
+                )}
               </div>
             </div>
-            <p className={`text-xl ${theme === 'dark' ? 'text-gray-400' : 'text-green-800/70'} font-medium tracking-tight`}>
-              Optimizing your <span className="text-neon-green">Neural-to-Study Ratio</span> in real-time.
-            </p>
+            <div>
+              <div className="flex flex-wrap items-center gap-4 mb-1">
+                <h2 className={`text-4xl md:text-6xl font-display font-black tracking-tighter ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>
+                  Hello, <span className="neon-text italic">{user?.displayName?.split(' ')[0] || "Student"}</span>
+                </h2>
+              </div>
+              <p className={`text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-green-800/70'} font-medium tracking-tight`}>
+                Optimizing your <span className="text-neon-green">Neural-to-Study Ratio</span> in real-time.
+              </p>
+            </div>
           </motion.div>
-          <motion.button 
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleRefresh}
-            className={`px-6 py-4 rounded-3xl flex items-center gap-4 transition-all group overflow-hidden relative ${theme === 'dark' ? 'bg-green-900/20 border-2 border-green-800 text-white' : 'glass bg-green-50/50 border-2 border-green-100'}`}
-          >
+          <div className="flex items-center gap-4">
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowProfileSettings(true)}
+              className={`p-4 rounded-3xl border transition-all ${theme === 'dark' ? 'bg-green-900/20 border-green-800 text-neon-green' : 'bg-white border-green-100 text-green-700'}`}
+              title="Identity & Goals"
+            >
+              <Settings className="w-5 h-5" />
+            </motion.button>
+            <motion.button 
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleRefresh}
+              className={`px-6 py-4 rounded-3xl flex items-center gap-4 transition-all group overflow-hidden relative ${theme === 'dark' ? 'bg-green-900/20 border-2 border-green-800 text-white' : 'glass bg-green-50/50 border-2 border-green-100'}`}
+            >
             {isRefreshing ? (
                <NeuralLoader size="sm" className="scale-75" />
             ) : (
@@ -205,47 +334,56 @@ export default function Dashboard() {
             </span>
           </motion.button>
         </div>
+      </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          {stats.map((stat, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              whileInView={{ opacity: 1, scale: 1, y: 0 }}
-              animate={isRefreshing ? { scale: [1, 1.05, 1], opacity: [1, 0.7, 1] } : {}}
-              whileHover={{ y: -5, scale: 1.02 }}
-              onClick={() => setSelectedHistory(stat.label)}
-              transition={{ 
-                delay: index * 0.1,
-                scale: { type: "spring", stiffness: 300, damping: 20 }
-              }}
-              viewport={{ once: true }}
-              className={`p-6 rounded-3xl shadow-sm border cursor-pointer transition-all ${theme === 'dark' ? 'bg-green-950/20 border-green-900 group' : 'glass bg-white border-green-50'}`}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-green-900/40' : 'bg-green-50'} ${stat.color}`}>
-                  <stat.icon className="w-6 h-6" />
+          {isRefreshing ? (
+            <>
+              <StatSkeleton />
+              <StatSkeleton />
+              <StatSkeleton />
+              <StatSkeleton />
+            </>
+          ) : (
+            stats.map((stat, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                whileInView={{ opacity: 1, scale: 1, y: 0 }}
+                whileHover={{ y: -5, scale: 1.02 }}
+                onClick={() => setSelectedHistory(stat.label)}
+                transition={{ 
+                  delay: index * 0.1,
+                  scale: { type: "spring", stiffness: 300, damping: 20 }
+                }}
+                viewport={{ once: true }}
+                className={`p-6 rounded-3xl shadow-sm border cursor-pointer transition-all ${theme === 'dark' ? 'bg-green-950/20 border-green-900 group' : 'glass bg-white border-green-50'}`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-green-900/40' : 'bg-green-50'} ${stat.color}`}>
+                    <stat.icon className="w-6 h-6" />
+                  </div>
+                  <div className="flex flex-col items-end">
+                     <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${theme === 'dark' ? 'text-neon-green' : 'text-green-700'}`}>{stat.trend}</span>
+                     <span className={`text-[7px] font-bold uppercase opacity-30 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Real-time Node</span>
+                  </div>
                 </div>
-                <div className="flex flex-col items-end">
-                   <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${theme === 'dark' ? 'text-neon-green' : 'text-green-700'}`}>{stat.trend}</span>
-                   <span className={`text-[7px] font-bold uppercase opacity-30 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Real-time Node</span>
+                <div className={`text-4xl font-display font-bold mb-1 group-hover:scale-105 transition-transform origin-left ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>{stat.value}</div>
+                <div className={`text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center justify-between ${theme === 'dark' ? 'text-gray-500' : 'text-green-800/40'}`}>
+                  {stat.label}
+                  <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                 </div>
-              </div>
-              <div className={`text-4xl font-display font-bold mb-1 group-hover:scale-105 transition-transform origin-left ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>{stat.value}</div>
-              <div className={`text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center justify-between ${theme === 'dark' ? 'text-gray-500' : 'text-green-800/40'}`}>
-                {stat.label}
-                <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-              </div>
-              
-              <div className={`w-full h-1.5 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-green-900/10' : 'bg-green-50'}`}>
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${stat.progress}%` }}
-                  className={`h-full bg-gradient-to-r from-neon-green/40 to-neon-green rounded-full shadow-[0_0_10px_#39FF14]`}
-                />
-              </div>
-            </motion.div>
-          ))}
+                
+                <div className={`w-full h-1.5 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-green-900/10' : 'bg-green-50'}`}>
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${stat.progress}%` }}
+                    className={`h-full bg-gradient-to-r from-neon-green/40 to-neon-green rounded-full shadow-[0_0_10px_#39FF14]`}
+                  />
+                </div>
+              </motion.div>
+            ))
+          )}
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
@@ -256,32 +394,39 @@ export default function Dashboard() {
               <h3 className={`text-xl font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>
                 <BookOpen className="w-5 h-5 text-neon-green" />
                 Daily Habits & Tasks
-                <button 
-                  onClick={() => setTasks([])}
-                  className="ml-2 text-[10px] font-bold text-red-400 hover:text-red-600 uppercase tracking-widest transition-colors"
-                >
-                  Clear All
-                </button>
               </h3>
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1 sm:w-64 flex gap-2">
-                  <div className="relative flex-1">
-                    <input 
-                      type="text" 
-                      value={studyTopic}
-                      onChange={(e) => setStudyTopic(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && generateStudyTasks()}
-                      placeholder="Add a new study task..."
-                      className={`w-full border rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:border-neon-green transition-colors pr-10 shadow-inner ${theme === 'dark' ? 'bg-green-950/40 border-green-900 text-white' : 'bg-green-50/40 border-green-100 text-green-950'}`}
-                    />
-                    <Sparkles className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neon-green/30 pointer-events-none" />
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={neuralSyncTasks}
+                    disabled={isRefreshing}
+                    className="h-9 text-[10px] font-black text-neon-green border border-neon-green/30 px-4 rounded-full uppercase tracking-widest hover:bg-neon-green/10 transition-all flex items-center gap-2 shadow-sm"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    Neural Sync
+                  </button>
+                  <button 
+                    onClick={() => setTasks([])}
+                    className="w-9 h-9 flex items-center justify-center aspect-square text-red-400 hover:text-red-600 hover:bg-red-50/50 transition-all rounded-full border border-red-400/20 shadow-sm"
+                    title="Clear All"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="relative w-64 hidden sm:block">
+                  <input 
+                    type="text" 
+                    value={studyTopic}
+                    onChange={(e) => setStudyTopic(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && generateStudyTasks()}
+                    placeholder="Add a new study task..."
+                    className={`w-full border rounded-full py-2.5 px-4 text-xs focus:outline-none focus:border-neon-green transition-colors pr-12 shadow-inner ${theme === 'dark' ? 'bg-green-950/40 border-green-900 text-white' : 'bg-green-50/40 border-green-100 text-green-950'}`}
+                  />
                   <button 
                     onClick={generateStudyTasks}
-                    className="p-2.5 bg-neon-green text-white rounded-xl hover:scale-105 active:scale-95 transition-all shadow-md shadow-neon-green/20"
-                    title="Add Task"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-neon-green text-white rounded-full hover:scale-105 active:scale-95 transition-all shadow-sm"
                   >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -336,7 +481,7 @@ export default function Dashboard() {
                       </span>
                       <button 
                         onClick={(e) => deleteTask(e, item.id)}
-                        className={`p-2 rounded-xl transition-all ${theme === 'dark' ? 'text-red-400 hover:bg-red-900/20' : 'text-red-400 hover:text-red-600 hover:bg-red-50'}`}
+                        className={`shrink-0 w-8 h-8 flex items-center justify-center aspect-square rounded-xl transition-all ${theme === 'dark' ? 'text-red-400 hover:bg-red-900/20' : 'text-red-400 hover:text-red-600 hover:bg-red-50'}`}
                         title="Delete task"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -411,7 +556,25 @@ export default function Dashboard() {
                      <motion.button 
                        whileHover={{ scale: 1.02 }}
                        whileTap={{ scale: 0.98 }}
-                       onClick={() => setShowMeditation(true)}
+                       onClick={handleRefresh}
+                       className="flex-1 py-5 bg-neon-green/10 text-neon-green border-2 border-neon-green rounded-[24px] font-black uppercase tracking-widest hover:bg-neon-green/20 transition-all flex items-center justify-center gap-4 group/scan"
+                     >
+                       <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                       Scan
+                     </motion.button>
+                     <motion.button 
+                       whileHover={{ scale: 1.02 }}
+                       whileTap={{ scale: 0.98 }}
+                       onClick={() => addHistoryRecord(metrics)}
+                       className="flex-1 py-5 bg-blue-500/10 text-blue-400 border-2 border-blue-500/50 rounded-[24px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all flex items-center justify-center gap-4"
+                     >
+                       <Activity className="w-5 h-5" />
+                       Log
+                     </motion.button>
+                     <motion.button 
+                     whileHover={{ scale: 1.02 }}
+                     whileTap={{ scale: 0.98 }}
+                     onClick={() => setShowMeditation(true)}
                        className="w-full py-5 bg-neon-green text-white rounded-[24px] font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-[0_10px_30px_-10px_rgba(57,255,20,0.3)] flex items-center justify-center gap-4 group/zen"
                      >
                        <div className="p-1 bg-white/20 rounded-lg group-hover/zen:rotate-12 transition-transform">
@@ -578,6 +741,91 @@ export default function Dashboard() {
                     </div>
                   )}
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Profile Settings Modal */}
+      <AnimatePresence>
+        {showProfileSettings && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={`fixed inset-0 z-[150] flex items-center justify-center p-4 backdrop-blur-md ${theme === 'dark' ? 'bg-black/80' : 'bg-green-950/20'}`}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 30 }}
+              className={`w-full max-w-xl rounded-[40px] p-8 md:p-10 shadow-2xl relative border ${theme === 'dark' ? 'bg-[#0a201a] border-green-900' : 'bg-white border-green-100'}`}
+            >
+              <button 
+                onClick={() => setShowProfileSettings(false)}
+                className={`absolute top-8 right-8 p-3 rounded-full transition-colors ${theme === 'dark' ? 'hover:bg-green-900 text-white' : 'hover:bg-green-50 text-green-800'}`}
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              <div className="flex items-center gap-6 mb-10">
+                <div className="p-4 bg-neon-green/10 rounded-[28px] text-neon-green">
+                  <Settings className="w-8 h-8" />
+                </div>
+                <div>
+                  <h3 className={`text-3xl font-display font-bold leading-tight ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>Identity & Goals</h3>
+                  <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-green-800/60'} font-medium`}>Customize your AI Mentor focus.</p>
+                </div>
+              </div>
+
+              <div className="space-y-8">
+                <div>
+                  <label className={`block text-[10px] font-black uppercase tracking-[0.2em] mb-3 ${theme === 'dark' ? 'text-neon-green' : 'text-green-800'}`}>Current Goal / Target</label>
+                  <input 
+                    type="text" 
+                    value={profile.goal}
+                    onChange={(e) => updateProfile({ goal: e.target.value })}
+                    placeholder="e.g., JEE Advanced, Class 10 Boards, Learn to Code"
+                    className={`w-full p-5 rounded-2xl border transition-all focus:ring-4 focus:ring-neon-green/10 outline-none font-bold ${theme === 'dark' ? 'bg-green-950/40 border-green-900 text-white' : 'bg-green-50/40 border-green-100 text-green-950'}`}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className={`block text-[10px] font-black uppercase tracking-[0.2em] mb-3 ${theme === 'dark' ? 'text-neon-green' : 'text-green-800'}`}>Motivation Style</label>
+                    <select 
+                      value={profile.motivation}
+                      onChange={(e) => updateProfile({ motivation: e.target.value })}
+                      className={`w-full p-5 rounded-2xl border transition-all outline-none font-bold ${theme === 'dark' ? 'bg-green-950/40 border-green-900 text-white' : 'bg-green-50/40 border-green-100 text-green-950'}`}
+                    >
+                      <option>Balanced</option>
+                      <option>Strict & Hardcore</option>
+                      <option>Empathetic & Gentle</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={`block text-[10px] font-black uppercase tracking-[0.2em] mb-3 ${theme === 'dark' ? 'text-neon-green' : 'text-green-800'}`}>Study Method</label>
+                    <select 
+                      value={profile.studyPreference}
+                      onChange={(e) => updateProfile({ studyPreference: e.target.value })}
+                      className={`w-full p-5 rounded-2xl border transition-all outline-none font-bold ${theme === 'dark' ? 'bg-green-950/40 border-green-900 text-white' : 'bg-green-50/40 border-green-100 text-green-950'}`}
+                    >
+                      <option>Interactive</option>
+                      <option>Video-First</option>
+                      <option>Deep Reading</option>
+                    </select>
+                  </div>
+                </div>
+
+                <motion.button 
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowProfileSettings(false)}
+                  className="w-full py-5 bg-neon-green text-white rounded-[24px] font-black uppercase tracking-widest hover:brightness-110 shadow-lg shadow-neon-green/20 transition-all"
+                >
+                  Save Neural Profile
+                </motion.button>
               </div>
             </motion.div>
           </motion.div>

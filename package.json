@@ -1,7 +1,7 @@
 {
-  "name": "react-example",
+  "name": "swasthyasaathi",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "start": "tsx server.ts"
+    "start": "node server.ts"
   },
   "dependencies": {
     "@google/genai": "^1.50.1",
@@ -22,7 +22,6 @@
     "firebase": "^12.12.0",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
-    "openai": "^6.34.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",

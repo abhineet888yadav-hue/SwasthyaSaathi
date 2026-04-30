@@ -105,38 +105,47 @@ export default function Navbar() {
                 </button>
 
                 {user ? (
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
                     <Link 
                       to="/profile" 
-                      className={`flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border transition-colors group ${theme === 'dark' ? 'bg-green-900/40 border-green-800 hover:bg-green-900/60' : 'bg-green-50 border-green-100 hover:bg-green-100'}`}
+                      className={`flex items-center gap-2 pl-1.5 pr-4 py-1.5 rounded-2xl border transition-all active:scale-95 group ${theme === 'dark' ? 'bg-green-900/20 border-green-800/50 hover:bg-green-900/40 hover:border-green-700' : 'bg-green-50/50 border-green-100 hover:bg-green-100 hover:border-green-200'}`}
                     >
                       {user.photoURL ? (
                         <img 
                           src={user.photoURL} 
                           alt={user.displayName || "User"} 
-                          className="w-8 h-8 rounded-full border border-white shadow-sm group-hover:scale-110 transition-transform"
+                          className="w-7 h-7 rounded-full border border-white shadow-sm transition-transform group-hover:scale-105"
                           referrerPolicy="no-referrer"
                         />
                       ) : (
-                        <div className="w-8 h-8 bg-neon-green/20 rounded-full flex items-center justify-center text-neon-green">
-                          <User className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                        <div className="w-7 h-7 bg-neon-green/20 rounded-full flex items-center justify-center text-neon-green">
+                          <User className="w-4 h-4" />
                         </div>
                       )}
-                      <span className={`text-sm font-bold transition-colors ${theme === 'dark' ? 'text-gray-200 group-hover:text-neon-green' : 'text-green-900 group-hover:text-neon-green'}`}>
+                      <span className={`text-sm font-bold tracking-tight transition-colors ${theme === 'dark' ? 'text-gray-200 group-hover:text-white' : 'text-green-900 group-hover:text-neon-green'}`}>
                         {user.displayName || user.email?.split('@')[0]}
                       </span>
                     </Link>
                     <button 
                       onClick={handleSignOut}
-                      className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-xl font-bold hover:bg-red-100 transition-all text-sm active:scale-95 shadow-sm"
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold transition-all text-xs uppercase tracking-wider active:scale-95 border ${theme === 'dark' ? 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20 hover:border-red-500/40' : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100 hover:border-red-200 shadow-sm'}`}
                     >
-                      <LogOut className="w-4 h-4" />
-                      Sign Out
+                      <LogOut className="w-3.5 h-3.5" />
+                      Exit
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-4">
-                    <Link to="/signup" className="bg-neon-green text-white px-6 py-2 rounded-full font-bold hover:scale-105 transition-all neon-glow active:scale-95 shadow-lg shadow-neon-green/20">
+                  <div className="flex items-center gap-3">
+                    <Link 
+                      to="/signin" 
+                      className={`hidden sm:block px-5 py-2.5 rounded-full font-bold text-sm transition-all active:scale-95 ${theme === 'dark' ? 'text-gray-300 hover:text-white hover:bg-white/5' : 'text-green-800 hover:text-neon-green hover:bg-green-50'}`}
+                    >
+                      Log In
+                    </Link>
+                    <Link 
+                      to="/signup" 
+                      className="bg-neon-green text-green-950 px-7 py-2.5 rounded-full font-bold hover:scale-105 hover:bg-[#00ff00] hover:shadow-[0_0_20px_rgba(57,255,20,0.4)] transition-all active:scale-95 text-sm whitespace-nowrap"
+                    >
                       Get Started
                     </Link>
                   </div>
@@ -173,7 +182,6 @@ export default function Navbar() {
               <>
                 <button onClick={() => scrollToSection("hero")} className={`block w-full text-left font-medium ${theme === 'dark' ? 'text-gray-300 hover:text-neon-green' : 'text-green-800 hover:text-neon-green'}`}>Home</button>
                 <button onClick={() => scrollToSection("features")} className={`block w-full text-left font-medium ${theme === 'dark' ? 'text-gray-300 hover:text-neon-green' : 'text-green-800 hover:text-neon-green'}`}>Features</button>
-                <button onClick={() => scrollToSection("chapter-analysis")} className={`block w-full text-left font-medium ${theme === 'dark' ? 'text-gray-300 hover:text-neon-green' : 'text-green-800 hover:text-neon-green'}`}>Chapters</button>
                 <button onClick={() => scrollToSection("dashboard")} className={`block w-full text-left font-medium ${theme === 'dark' ? 'text-gray-300 hover:text-neon-green' : 'text-green-800 hover:text-neon-green'}`}>Dashboard</button>
                 <button onClick={() => scrollToSection("pricing")} className={`block w-full text-left font-medium ${theme === 'dark' ? 'text-gray-300 hover:text-neon-green' : 'text-green-800 hover:text-neon-green'}`}>Pricing</button>
                 <button onClick={() => scrollToSection("faq")} className={`block w-full text-left font-medium ${theme === 'dark' ? 'text-gray-300 hover:text-neon-green' : 'text-green-800 hover:text-neon-green'}`}>FAQ</button>
@@ -212,18 +220,25 @@ export default function Navbar() {
                 </button>
                 <button 
                   onClick={() => { handleSignOut(); setIsOpen(false); }}
-                  className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-bold"
+                  className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all active:scale-95 ${theme === 'dark' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-red-50 text-red-600'}`}
                 >
                   <LogOut className="w-4 h-4" />
-                  Sign Out
+                  Exit Account
                 </button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
+                <Link 
+                  to="/signin" 
+                  onClick={() => setIsOpen(false)}
+                  className={`block w-full text-center py-3 rounded-xl font-bold border transition-all active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-white border-white/10' : 'bg-green-50 text-green-900 border-green-100'}`}
+                >
+                  Log In
+                </Link>
                 <Link 
                   to="/signup" 
                   onClick={() => setIsOpen(false)}
-                  className="block w-full bg-neon-green text-white px-5 py-3 rounded-full font-bold shadow-lg shadow-green-200 text-center"
+                  className="block w-full bg-neon-green text-green-950 px-5 py-3 rounded-xl font-bold shadow-lg shadow-neon-green/20 text-center active:scale-95"
                 >
                   Get Started
                 </Link>

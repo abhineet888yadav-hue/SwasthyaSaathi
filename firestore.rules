@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /_health_/{docId} {
+      allow read: if true;
+    }
+
+    // Global Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isVerified() { return request.auth.token.email_verified == true; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // User Profile Validation
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['goal', 'motivation', 'studyPreference']) &&
+             data.goal is string && data.goal.size() <= 200 &&
+             data.motivation is string && data.motivation.size() <= 100 &&
+             data.studyPreference is string && data.studyPreference.size() <= 100;
+    }
+
+    // Health Metric Validation
+    function isValidHealthMetric(data) {
+      return data.keys().hasAll(['date', 'sleepHours', 'mood', 'studyHours', 'status', 'burnoutRisk', 'burnoutProgress']) &&
+             data.date is string && // ISO date
+             data.sleepHours is string && data.sleepHours.size() <= 20 &&
+             data.mood is string && data.mood.size() <= 200 &&
+             data.studyHours is string && data.studyHours.size() <= 20 &&
+             data.status is string && data.status.size() <= 50 &&
+             data.burnoutRisk is string && data.burnoutRisk.size() <= 50 &&
+             data.burnoutProgress is number;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUserProfile(incoming());
+      allow update: if isOwner(userId) && isValidUserProfile(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['goal', 'motivation', 'studyPreference'])
+      );
+
+      match /history/{recordId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(recordId) && isValidHealthMetric(incoming());
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

@@ -9,7 +9,7 @@ const steps = [
   {
     number: "02",
     title: "AI Analysis",
-    description: "Our NexBot analyzes your query using advanced Gemini intelligence."
+    description: "Our SwasthyaSaathi AI analyzes your query using advanced Gemini intelligence."
   },
   {
     number: "03",

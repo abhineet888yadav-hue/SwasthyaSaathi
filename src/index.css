@@ -66,6 +66,34 @@
     content-visibility: auto;
     contain-intrinsic-size: 1px 1000px;
   }
+
+  /* Aspect Ratio Utilities & Fallbacks */
+  .aspect-container {
+    position: relative;
+    width: 100%;
+    /* Use native property if supported */
+    aspect-ratio: var(--ratio, 16/9);
+  }
+
+  /* Object Fit & Prevent Layout Shift Helpers */
+  .img-fill {
+    @apply w-full h-full object-cover;
+  }
+
+  /* Legacy Browser Fallback (Padding-Hack) */
+  @supports not (aspect-ratio: 16/9) {
+    .aspect-container {
+      padding-top: calc(100% / (var(--ratio-w, 16) / var(--ratio-h, 9)));
+      height: 0;
+    }
+    .aspect-container > * {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+  }
   
   /* Hero section is always visible on load */
   #hero {

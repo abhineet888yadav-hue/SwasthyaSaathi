@@ -1,7 +1,9 @@
 import { motion, useMotionValue, useSpring } from "motion/react";
 import { Sparkles, ArrowRight, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { signInWithPopup, onAuthStateChanged } from "firebase/auth";
+import { auth, googleProvider } from "../lib/firebase";
 
 import { useTheme } from "../context/ThemeContext";
 
@@ -9,16 +11,38 @@ export default function Hero() {
   const [isMounted, setIsMounted] = useState(false);
   const [showModels, setShowModels] = useState(false);
   const [isIframeLoaded, setIsIframeLoaded] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
   const { theme } = useTheme();
   
   useEffect(() => {
     setIsMounted(true);
     
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+
     // Delay loading the heavy 3D models slightly to prioritize UI interactivity
     const timer = setTimeout(() => setShowModels(true), 1500);
     
-    return () => clearTimeout(timer);
+    return () => {
+      unsubscribe();
+      clearTimeout(timer);
+    };
   }, []);
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    try {
+      await signInWithPopup(auth, googleProvider);
+      navigate("/#dashboard");
+    } catch (err) {
+      console.error("Google sign in error from Hero:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <section id="hero" className={`relative pt-32 pb-20 overflow-hidden transition-colors duration-500 ${theme === 'dark' ? 'bg-[#051510]' : 'bg-white'}`}>
@@ -57,12 +81,21 @@ export default function Hero() {
                 <span className="block mt-2 opacity-60">Ab study hogi bina kisi stress ke!</span>
               </p>
               <div className="flex flex-wrap gap-4">
-                <Link 
-                  to="/signup"
-                  className="bg-neon-green text-white px-8 py-4 rounded-full font-bold text-lg hover:scale-105 transition-transform neon-glow flex items-center gap-2"
-                >
-                  Get Started <ArrowRight className="w-5 h-5" />
-                </Link>
+                {user ? (
+                  <button 
+                    onClick={() => document.getElementById('dashboard')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="bg-neon-green text-white px-8 py-4 rounded-full font-bold text-lg hover:scale-105 transition-transform neon-glow flex items-center gap-2"
+                  >
+                    Go to Dashboard <ArrowRight className="w-5 h-5" />
+                  </button>
+                ) : (
+                  <Link 
+                    to="/signup"
+                    className="bg-neon-green text-white px-8 py-4 rounded-full font-bold text-lg hover:scale-105 transition-transform neon-glow flex items-center gap-2"
+                  >
+                    Get Started <ArrowRight className="w-5 h-5" />
+                  </Link>
+                )}
                 <button 
                   onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
                   className={`px-8 py-4 rounded-full font-bold text-lg hover:bg-opacity-80 transition-all ${theme === 'dark' ? 'bg-white/5 border border-white/10 text-white' : 'glass text-green-900'}`}
@@ -77,7 +110,7 @@ export default function Hero() {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, delay: 0.2 }}
-            className="relative h-[500px] sm:h-[600px] lg:h-[700px] w-full"
+            className="relative w-full aspect-square sm:aspect-video lg:aspect-[4/3] max-h-[700px] flex items-center justify-center"
           >
             <div className="w-full h-full relative z-10">
               {/* Background Glow */}
@@ -99,7 +132,7 @@ export default function Hero() {
                       width="100%" 
                       height="100%"
                       className="w-full h-full scale-110 relative z-10"
-                      title="NexBot 3D Model"
+                      title="SwasthyaSaathi 3D Model"
                       loading="lazy"
                       onLoad={() => setIsIframeLoaded(true)}
                     ></motion.iframe>

@@ -76,7 +76,7 @@ function MiniChatCard({ feature, index }: { feature: any, index: number }) {
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<{file: File, preview: string} | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: "model", content: "Hi! I'm NexBot. Ask me any doubt—I'll keep it short and fast. Need more detail? Just ask!" }
+    { role: "model", content: "Namaste! I'm SwasthyaSaathi. Ask me any academic doubt—I'll help you solve it with Padhai bhi, Health bhi! 📚💪" }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [useSearch, setUseSearch] = useState(false);
@@ -137,13 +137,27 @@ function MiniChatCard({ feature, index }: { feature: any, index: number }) {
       }
 
       const response = await ai.models.generateContent({
-        model: imgData ? "gemini-3.1-pro-preview" : "gemini-3.1-flash-lite-preview",
+        model: "gemini-3.1-pro-preview",
         contents: [
-          ...messages.slice(-3).map(m => ({ role: m.role, parts: [{ text: m.content }] })),
+          ...messages.slice(-5).map(m => ({ role: m.role, parts: [{ text: m.content }] })),
           { role: "user", parts }
         ],
         config: {
-          systemInstruction: "You are SwasthyaSaathi, an empathetic AI mentor for students. Use natural Hinglish. Give short, bite-sized answers. End with 'Need more detail? Just ask!'"
+          systemInstruction: `You are the **SwasthyaSaathi AI Mentor**, an expert companion for students designed to balance academic excellence with mental and physical well-being. Your mission: "Padhai bhi, Health bhi."
+
+Core Competencies:
+1. **Academic Support**: Solve complex doubts, explain difficult concepts simply, and help create efficient study schedules.
+2. **Health & Wellness**: Provide tips for managing exam stress, preventing burnout, improving posture, and maintaining a healthy sleep cycle.
+3. **Motivation**: Act as a supportive coach. Use natural Hinglish to build trust (e.g., "Ab study hogi bina kisi stress ke").
+
+Response Guidelines:
+- **Tone**: Professional, encouraging, and grounded. 
+- **Language**: Primarily English, but use relatesble **Hinglish** phrases.
+- **Clarity**: Use bullet points for complex explanations. Keep responses concise.
+- **Boundaries**: You are an AI Mentor, not a doctor. Include disclaimers for health issues.
+- **Scope**: Stay focused on study and health. Gently steer irrelevant questions back.
+
+End with 'Need more detail? Just ask!' only if appropriate for the flow.`
         }
       });
 
@@ -182,29 +196,67 @@ function MiniChatCard({ feature, index }: { feature: any, index: number }) {
         return;
       }
 
-      const utterance = new SpeechSynthesisUtterance(sentences[currentSentenceIndex].trim());
+      // Clean text for natural Indian pronunciation
+      let cleanSentence = sentences[currentSentenceIndex].trim()
+        .replace(/[*#_~]/g, '')
+        .replace(/SwasthyaSaathi/g, 'Swasthya Saathi')
+        .replace(/e\.g\./gi, 'for example')
+        .trim();
+
+      if (!cleanSentence) {
+        currentSentenceIndex++;
+        speakChunk();
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(cleanSentence);
       
       const voices = window.speechSynthesis?.getVoices() || [];
-      const preferredVoice = voices.find(v => 
-        (v.lang === 'en-IN' && v.name.toLowerCase().includes('enhanced')) ||
-        (v.lang === 'hi-IN' && v.name.toLowerCase().includes('enhanced'))
+      // 1. Prioritize Hindi (hi-IN) - Most relatable
+      let preferredVoice = voices.find(v => 
+        (v.lang === 'hi-IN' || v.lang.startsWith('hi')) && v.name.toLowerCase().includes('google')
       ) || voices.find(v => 
-        v.lang === 'en-IN' || v.lang === 'hi-IN'
-      ) || voices.find(v => 
-        v.name.toLowerCase().includes('india') || v.lang.includes('IN')
-      ) || voices.find(v => v.lang.includes('UK'));
+        v.lang === 'hi-IN' || v.lang.startsWith('hi')
+      );
+
+      // 2. Fallback to Indian English (en-IN) - Better for Hinglish than US/UK
+      if (!preferredVoice) {
+        preferredVoice = voices.find(v => 
+          v.lang === 'en-IN' && v.name.toLowerCase().includes('google')
+        ) || voices.find(v => 
+          v.lang === 'en-IN' && (v.name.toLowerCase().includes('india') || v.name.toLowerCase().includes('india'))
+        ) || voices.find(v => 
+          v.lang === 'en-IN'
+        );
+      }
+
+      // 3. Last resort fallbacks
+      if (!preferredVoice) {
+        preferredVoice = voices.find(v => 
+          v.name.toLowerCase().includes('india') || v.lang.includes('IN')
+        ) || voices.find(v => 
+          v.name.toLowerCase().includes('google')
+        ) || voices.find(v => v.lang.includes('en-GB'));
+      }
 
       if (preferredVoice) utterance.voice = preferredVoice;
-      utterance.pitch = 1.1;
-      utterance.rate = 1.0;
+      
+      const isHindi = preferredVoice?.lang.startsWith('hi');
+      utterance.pitch = isHindi ? 1.05 : 0.98;
+      utterance.rate = isHindi ? 0.95 : 0.92;
+      utterance.volume = 1.0;
 
       utterance.onend = () => {
         currentSentenceIndex++;
-        speakChunk();
+        // Small pause between sentences for natural flow
+        setTimeout(speakChunk, isHindi ? 150 : 300);
       };
 
-      utterance.onerror = (err) => {
-        console.error("Speech error:", err);
+      utterance.onerror = (err: any) => {
+        const errorMessage = err.error || String(err);
+        if (errorMessage !== 'canceled' && errorMessage !== 'interrupted') {
+          console.error("Speech error:", errorMessage);
+        }
         setPlayingId(null);
       };
 
@@ -219,7 +271,7 @@ function MiniChatCard({ feature, index }: { feature: any, index: number }) {
   };
 
   const clearChat = () => {
-    setMessages([{ role: "model", content: "Hi! Ask me any academic doubt." }]);
+    setMessages([{ role: "model", content: "Namaste! Ask me any academic doubt." }]);
   };
 
   return (
@@ -568,29 +620,67 @@ function RevisionCard({ feature, index }: { feature: any, index: number }) {
         return;
       }
 
-      const utterance = new SpeechSynthesisUtterance(sentences[currentSentenceIndex].trim());
+      // Clean text for natural Indian pronunciation
+      let cleanSentence = sentences[currentSentenceIndex].trim()
+        .replace(/[*#_~]/g, '')
+        .replace(/SwasthyaSaathi/g, 'Swasthya Saathi')
+        .replace(/e\.g\./gi, 'for example')
+        .trim();
+
+      if (!cleanSentence) {
+        currentSentenceIndex++;
+        speakChunk();
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(cleanSentence);
       
       const voices = window.speechSynthesis?.getVoices() || [];
-      const preferredVoice = voices.find(v => 
-        (v.lang === 'en-IN' && v.name.toLowerCase().includes('enhanced')) ||
-        (v.lang === 'hi-IN' && v.name.toLowerCase().includes('enhanced'))
+      // 1. Prioritize Hindi (hi-IN) - Most relatable
+      let preferredVoice = voices.find(v => 
+        (v.lang === 'hi-IN' || v.lang.startsWith('hi')) && v.name.toLowerCase().includes('google')
       ) || voices.find(v => 
-        v.lang === 'en-IN' || v.lang === 'hi-IN'
-      ) || voices.find(v => 
-        v.name.toLowerCase().includes('india') || v.lang.includes('IN')
-      ) || voices.find(v => v.lang.includes('UK'));
+        v.lang === 'hi-IN' || v.lang.startsWith('hi')
+      );
+
+      // 2. Fallback to Indian English (en-IN) - Better for Hinglish than US/UK
+      if (!preferredVoice) {
+        preferredVoice = voices.find(v => 
+          v.lang === 'en-IN' && v.name.toLowerCase().includes('google')
+        ) || voices.find(v => 
+          v.lang === 'en-IN' && (v.name.toLowerCase().includes('india') || v.name.toLowerCase().includes('india'))
+        ) || voices.find(v => 
+          v.lang === 'en-IN'
+        );
+      }
+
+      // 3. Last resort fallbacks
+      if (!preferredVoice) {
+        preferredVoice = voices.find(v => 
+          v.name.toLowerCase().includes('india') || v.lang.includes('IN')
+        ) || voices.find(v => 
+          v.name.toLowerCase().includes('google')
+        ) || voices.find(v => v.lang.includes('en-GB'));
+      }
 
       if (preferredVoice) utterance.voice = preferredVoice;
-      utterance.pitch = 1.1;
-      utterance.rate = 1.0;
+      
+      const isHindi = preferredVoice?.lang.startsWith('hi');
+      utterance.pitch = isHindi ? 1.05 : 0.98;
+      utterance.rate = isHindi ? 0.95 : 0.92;
+      utterance.volume = 1.0;
 
       utterance.onend = () => {
         currentSentenceIndex++;
-        speakChunk();
+        // Small pause between sentences for natural flow
+        setTimeout(speakChunk, isHindi ? 150 : 300);
       };
 
-      utterance.onerror = (err) => {
-        console.error("Speech error:", err);
+      utterance.onerror = (err: any) => {
+        const errorMessage = err.error || String(err);
+        if (errorMessage !== 'canceled' && errorMessage !== 'interrupted') {
+          console.error("Speech error:", errorMessage);
+        }
         setPlayingType(null);
       };
 
@@ -701,7 +791,7 @@ import { useHealth } from "../context/HealthContext";
 import { Type } from "@google/genai";
 
 function HealthCheckCard({ feature, index }: { feature: any, index: number }) {
-  const { addHistoryRecord } = useHealth();
+  const { addHistoryRecord, history } = useHealth();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({
     sleep: "",
@@ -715,13 +805,13 @@ function HealthCheckCard({ feature, index }: { feature: any, index: number }) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const questions = [
-    { key: "sleep", q: "How many hours did you sleep last night?", options: ["< 5h", "5-7h", "7-9h", "9h+"] },
-    { key: "sleepTime", q: "How was your sleep quality?", options: ["Poor", "Restless", "Good", "Deep"] },
-    { key: "mood", q: "How are you feeling right now?", options: ["Stressed", "Tired", "Neutral", "Positive"] },
-    { key: "study", q: "How many hours have you studied today?", options: ["< 2h", "2-4h", "4-6h", "6h+"] },
-    { key: "stress", q: "Do you feel overwhelmed by your workload?", options: ["Not at all", "A little", "Somewhat", "Very much"] },
-    { key: "water", q: "How's your water intake today?", options: ["Dehydrated", "1-2 Liters", "2-3 Liters", "Well Hydrated"] },
-    { key: "breaks", q: "How often do you take study breaks?", options: ["Rarely", "Every 2h", "Every 1h", "Every 45m"] }
+    { key: "sleep", q: "Kal raat kitne ghante soye aap?", options: ["< 5h", "5-7h", "7-9h", "9h+"] },
+    { key: "sleepTime", q: "Sleep quality kaisi thi?", options: ["Poor", "Restless", "Good", "Deep"] },
+    { key: "mood", q: "Abhi kaisa feel kar rahe hain?", options: ["Stressed", "Tired", "Neutral", "Positive"] },
+    { key: "study", q: "Aaj kitni padhai ho chuki hai?", options: ["< 2h", "2-4h", "4-6h", "6h+"] },
+    { key: "stress", q: "Kya workload pressure feel ho raha hai?", options: ["Not at all", "A little", "Somewhat", "Very much"] },
+    { key: "water", q: "Paani kitna piya aaj?", options: ["Dehydrated", "1-2 Liters", "2-3 Liters", "Well Hydrated"] },
+    { key: "breaks", q: "Study breaks ka kya haal hai?", options: ["Rarely", "Every 2h", "Every 1h", "Every 45m"] }
   ];
 
   const handleAnswer = (val: string) => {
@@ -737,24 +827,35 @@ function HealthCheckCard({ feature, index }: { feature: any, index: number }) {
   const handleFinish = async (finalAnswers: typeof answers) => {
     setIsAnalyzing(true);
     
-    try {
-      const prompt = `Analyze this student's health data. Be safe, empathetic, and encouraging.
-      1. A short health tip (max 15 words) in natural Hinglish.
-      2. A safety status: "Safe", "At Risk", or "Problem Detected".
-      3. Exactly 2-3 highly actionable and warm recommendations.
+    // Get last 3 records for context
+    const recentHistory = history.slice(0, 3).map(h => ({
+      date: h.date,
+      sleep: h.sleepHours,
+      mood: h.mood,
+      risk: h.burnoutRisk
+    }));
 
-      Data:
-      Sleep: ${finalAnswers.sleep}
+    try {
+      const prompt = `Analyze this student's health data. Be safe, empathetic, and encouraging like a mentor.
+      
+      Compare with recent history to provide 'Progress-Aware' tips. If they improved, appreciate them. If declining, warn gently.
+      
+      1. A personalized health tip (max 20 words) in professional yet relatable Hinglish.
+      2. A safety status: "Safe", "At Risk", or "Problem Detected".
+      3. Exactly 3 highly actionable recommendations based on CURRENT data AND HISTORY trends.
+
+      Current Data:
+      Sleep: ${finalAnswers.sleep} (${finalAnswers.sleepTime})
       Mood: ${finalAnswers.mood}
       Study: ${finalAnswers.study}
       Stress: ${finalAnswers.stress}
-      Water: ${finalAnswers.water}
-      Breaks: ${finalAnswers.breaks}`;
+      Recent Trends: ${JSON.stringify(recentHistory)}`;
 
       const response = await ai.models.generateContent({
         model: "gemini-3.1-pro-preview",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: {
+          systemInstruction: "You are SwasthyaSaathi, a wise and compassionate mentor. You analyze health trends to prevent student burnout.",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -817,22 +918,31 @@ function HealthCheckCard({ feature, index }: { feature: any, index: number }) {
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, y: { type: "spring", stiffness: 300, damping: 20 } }}
       viewport={{ once: true }}
-      className="glass p-6 rounded-3xl border-neon-green/30 transition-all group bg-white shadow-sm flex flex-col h-[650px]"
+      id={`feature-card-${index}`}
+      className="glass p-7 rounded-[32px] border-neon-green/30 transition-all group bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-[650px] relative overflow-hidden"
     >
-      <div className="flex items-center justify-between mb-4 shrink-0 relative z-10">
-        <div className="flex items-center gap-3">
-          <div className={`p-3 rounded-2xl ${feature.bg} shadow-sm group-hover:scale-110 transition-transform`}>
+      {/* Decorative Elements */}
+      <div className="absolute -top-10 -right-10 w-40 h-40 bg-neon-green/5 rounded-full blur-3xl pointer-events-none group-hover:bg-neon-green/10 transition-colors" />
+      <div className="absolute top-0 left-0 w-1 h-full bg-neon-green/20" />
+      
+      <div className="flex items-center justify-between mb-6 shrink-0 relative z-10">
+        <div className="flex items-center gap-4">
+          <div className={`p-3.5 rounded-[20px] ${feature.bg} shadow-sm group-hover:rotate-6 transition-transform border border-white`}>
             <feature.icon className={`w-6 h-6 ${feature.color}`} />
           </div>
           <div>
-            <h3 className="text-lg font-black text-green-950 tracking-tight leading-none">{feature.title}</h3>
-            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-neon-green/60">{feature.label}</span>
+            <h3 className="text-xl font-black text-green-950 tracking-tight leading-none mb-1.5">{feature.title}</h3>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neon-green/60">{feature.label}</span>
+              <div className="w-1 h-1 bg-neon-green/30 rounded-full" />
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-green-900/30">v2.0 Sync</span>
+            </div>
           </div>
         </div>
         {step > 0 && (
           <button 
             onClick={reset}
-            className="p-2 hover:bg-green-50 text-green-400 hover:text-green-600 rounded-lg transition-colors"
+            className="p-2.5 bg-green-50 hover:bg-neon-green/10 text-green-600 hover:text-neon-green rounded-xl transition-all active:scale-90"
             title="Restart check"
           >
             <RefreshCw className="w-4 h-4" />
@@ -840,51 +950,85 @@ function HealthCheckCard({ feature, index }: { feature: any, index: number }) {
         )}
       </div>
 
-      <div className="flex-1 flex flex-col justify-center">
+      <div className="flex-1 flex flex-col justify-center relative z-10">
         {isAnalyzing ? (
-          <div className="text-center space-y-4">
-            <NeuralLoader size="lg" label="Neural Mapping" />
+          <div className="text-center space-y-6">
+            <NeuralLoader size="lg" label="Analyzing Neural Patterns..." />
+            <p className="text-xs font-bold text-green-800/40 uppercase tracking-widest animate-pulse">Comparing with history records</p>
           </div>
         ) : step < questions.length ? (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <span className="text-[10px] font-bold text-neon-green uppercase tracking-wider">Question {step + 1} of {questions.length}</span>
-              <h4 className="text-lg font-bold text-green-950 leading-tight">{questions[step].q}</h4>
+          <div className="space-y-8">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black text-neon-green uppercase tracking-widest">Question {step + 1} of {questions.length}</span>
+                <div className="flex gap-1">
+                  {questions.map((_, i) => (
+                    <div key={i} className={`h-1 rounded-full transition-all ${i === step ? 'w-4 bg-neon-green' : i < step ? 'w-2 bg-neon-green/40' : 'w-2 bg-green-100'}`} />
+                  ))}
+                </div>
+              </div>
+              <h4 className="text-2xl font-bold text-green-950 leading-tight tracking-tight">{questions[step].q}</h4>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {questions[step].options.map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => handleAnswer(opt)}
-                  className="p-3 rounded-xl border border-green-100 hover:border-neon-green hover:bg-green-50 active:scale-95 active:bg-neon-green/10 transition-all text-sm font-medium text-green-900 text-center relative overflow-hidden group/btn"
-                >
-                  <span className="relative z-10">{opt}</span>
-                  <div className="absolute inset-0 bg-neon-green/5 translate-y-full group-hover/btn:translate-y-0 transition-transform" />
-                </button>
-              ))}
+            
+            <div className="grid grid-cols-2 gap-4">
+              <AnimatePresence mode="wait">
+                {questions[step].options.map((opt) => (
+                  <motion.button
+                    key={opt}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleAnswer(opt)}
+                    className="p-4 rounded-[22px] border-2 border-green-50 hover:border-neon-green/40 hover:bg-green-50/50 transition-all text-sm font-bold text-green-900 text-center relative overflow-hidden group/btn shadow-sm hover:shadow-md"
+                  >
+                    <span className="relative z-10">{opt}</span>
+                    <div className="absolute inset-0 bg-neon-green/5 translate-y-full group-hover/btn:translate-y-0 transition-transform" />
+                  </motion.button>
+                ))}
+              </AnimatePresence>
             </div>
+            
             <button
               onClick={() => handleAnswer("Skipped")}
-              className="w-full p-2 text-xs font-medium text-green-800/40 hover:text-green-800/60 transition-colors"
+              className="w-full p-2 text-[10px] font-black uppercase tracking-[0.2em] text-green-800/30 hover:text-green-800/60 transition-colors"
             >
-              Skip this question
+              Skip this metric
             </button>
           </div>
         ) : (
-          <div className="text-center space-y-6">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-              <Activity className="w-8 h-8 text-neon-green" />
-            </div>
-            <div className="space-y-2">
-              <h4 className="text-xl font-bold text-green-950">Check Complete!</h4>
-              <p className="text-sm text-green-800/60">Your dashboard has been updated with your latest health and stress metrics.</p>
-            </div>
-            <button
-              onClick={reset}
-              className="w-full py-3 bg-green-950 text-white rounded-xl font-bold hover:bg-black transition-colors"
+          <div className="text-center space-y-8">
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20 }}
+              className="w-20 h-20 bg-neon-green/10 rounded-[28px] flex items-center justify-center mx-auto border-2 border-neon-green/20"
             >
-              Take Check Again
-            </button>
+              <CheckCircle2 className="w-10 h-10 text-neon-green" />
+            </motion.div>
+            <div className="space-y-3">
+              <h4 className="text-2xl font-black text-green-950 tracking-tight">Sync Complete!</h4>
+              <p className="text-sm font-medium text-green-800/60 leading-relaxed px-4">
+                SwasthyaSaathi ne aapki metrics analyze kar li hain. Dashboad par check karein apna personalized <span className="text-neon-green font-bold">Neural Plan</span>.
+              </p>
+            </div>
+            <div className="pt-4 space-y-3">
+              <button
+                onClick={() => {
+                  const dashboard = document.getElementById('dashboard');
+                  if (dashboard) dashboard.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="w-full py-4 bg-neon-green text-green-950 rounded-2xl font-black uppercase tracking-widest hover:bg-[#00ff00] hover:shadow-[0_0_20px_rgba(57,255,20,0.3)] transition-all active:scale-95 text-sm"
+              >
+                View Dashboard
+              </button>
+              <button
+                onClick={reset}
+                className="w-full py-4 bg-green-50 text-green-900 rounded-2xl font-bold hover:bg-green-100 transition-all text-sm"
+              >
+                Retake Analysis
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -922,10 +1066,10 @@ function ChapterAnalysisCard({ feature, index }: { feature: any, index: number }
       const prompt = `Analyze the academic chapter: "${chapterName}". Provide a brief summary, 4-6 topics with descriptions and key points, and 3 specific tips. Respond in strictly valid JSON.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite-preview",
+        model: "gemini-3.1-pro-preview",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: {
-          systemInstruction: "You are a senior academic analyst. Break down complex chapters into simple, manageable topics. Use professional tone and Hinglish where appropriate. Response must be strictly valid JSON.",
+          systemInstruction: "You are a senior academic analyst. Break down complex chapters into simple, manageable topics using first principles. Use professional tone and Hinglish where appropriate. Response must be strictly valid JSON.",
           responseMimeType: "application/json",
           responseSchema: {
             type: "object",

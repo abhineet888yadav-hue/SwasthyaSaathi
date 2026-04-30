@@ -24,14 +24,14 @@ interface Message {
 import { useTheme } from "../context/ThemeContext";
 
 export default function ChatbotWidget() {
-  const { metrics, history } = useHealth();
+  const { metrics, history, profile } = useHealth();
   const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([
     { 
       role: "model", 
-      content: "Namaste! I am SwasthyaSaathi. I can now see images, think deeply, and even speak! How can I help you today?",
+      content: "Namaste! I am SwasthyaSaathi, your AI Mentor. Padhai bhi, Health bhi! 📚💪\n\nI can help you clear academic doubts, manage study stress, or plan your routine. How are you feeling today?",
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -52,34 +52,57 @@ export default function ChatbotWidget() {
     }
   });
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('swasthya_voice_uri', selectedVoiceURI || '');
-    } catch {
-      // Ignore
-    }
-  }, [selectedVoiceURI]);
+  // Keep voices list updated with better sorting for Indian users
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const activeSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const recognitionRef = useRef<any>(null);
-
+  
   useEffect(() => {
-    // Pre-load voices for SpeechSynthesis
     const loadVoices = () => {
-      const voices = window.speechSynthesis?.getVoices() || [];
-      setAvailableVoices(voices);
+      const allVoices = window.speechSynthesis?.getVoices() || [];
+      
+      // Sort: Popular Indian Google voices first, then other Indian voices, then high-quality English
+      const sorted = [...allVoices].sort((a, b) => {
+        const aLang = a.lang.toLowerCase();
+        const bLang = b.lang.toLowerCase();
+        const aName = a.name.toLowerCase();
+        const bName = b.name.toLowerCase();
+
+        const aIsIndian = aLang.includes('in') || aName.includes('india');
+        const bIsIndian = bLang.includes('in') || bName.includes('india');
+        const aIsHindi = aLang.startsWith('hi');
+        const bIsHindi = bLang.startsWith('hi');
+        const aIsModern = aName.includes('google') || aName.includes('enhanced') || aName.includes('natural');
+        const bIsModern = bName.includes('google') || bName.includes('enhanced') || bName.includes('natural');
+
+        if (aIsHindi && !bIsHindi) return -1;
+        if (!aIsHindi && bIsHindi) return 1;
+        if (aIsIndian && !bIsIndian) return -1;
+        if (!aIsIndian && bIsIndian) return 1;
+        if (aIsModern && !bIsModern) return -1;
+        if (!aIsModern && bIsModern) return 1;
+        return 0;
+      });
+
+      setAvailableVoices(sorted);
+      
+      // Auto-select best Indian voice on first load if nothing specifically saved
+      if (sorted.length > 0 && !localStorage.getItem('swasthya_voice_uri')) {
+        const best = sorted.find(v => v.lang.startsWith('hi') && v.name.includes('Google')) || 
+                     sorted.find(v => v.lang.startsWith('hi')) ||
+                     sorted.find(v => v.lang.includes('IN')) ||
+                     sorted[0];
+        setSelectedVoiceURI(best.voiceURI);
+      }
     };
 
     loadVoices();
-
-    window.speechSynthesis?.addEventListener?.('voiceschanged', loadVoices);
-    
+    if (window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
     return () => {
-      window.speechSynthesis?.removeEventListener?.('voiceschanged', loadVoices);
+      if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null;
     };
   }, []);
 
@@ -217,14 +240,22 @@ export default function ChatbotWidget() {
     const healthContextString = `
 Current Student Health Metrics:
 - Date: ${new Date(metrics.date).toLocaleDateString()}
-- Sleep: ${metrics.sleepHours} (${metrics.sleepTime})
-- Mood: ${metrics.mood}
+- Sleep Hours: ${metrics.sleepHours} (${metrics.sleepTime})
+- Current Mood: ${metrics.mood}
 - Study Hours: ${metrics.studyHours}
-- Burnout Risk: ${metrics.burnoutRisk}
-- Overall Status: ${metrics.status}
+- Burnout Risk Level: ${metrics.burnoutRisk}
+- Overall Wellness Status: ${metrics.status}
+
+User Academic Profile:
+- Goal/Target: ${profile.goal}
+- Motivation Style: ${profile.motivation}
+- Study Method preference: ${profile.studyPreference}
 
 Recent 7-Day History:
 ${last7DaysHistory.map(h => `- ${h.date}: Sleep ${h.sleep}, Mood ${h.mood}, Study ${h.study}, Burnout ${h.burnout} (${h.status})`).join('\n')}
+
+Student Persona Analysis:
+${history.length > 5 ? "User shows consistent academic focus but occasional sleep deprivation trends." : "New user, building neural profile."}
 `;
 
     const contents: any[] = messages.slice(-5).map(m => ({ 
@@ -245,26 +276,21 @@ ${last7DaysHistory.map(h => `- ${h.date}: Sleep ${h.sleep}, Mood ${h.mood}, Stud
     }
     contents.push({ role: "user", parts: userParts });
 
-    const customSystemInstruction = isDeepThinking 
-      ? `You are SwasthyaSaathi (Advanced Synthesis Mode). You are the ultimate AI Neural Mentor.
-      - TONE: High-energy, elite academic coach. Use "Super Hinglish" - mixing complex technical English with motivating Hindi.
-      - TTS GUIDANCE: Keep sentences relatively short. Minimize intense technical punctuation (like nested parentheses or heavy colon usage) as this makes TTS awkward. Keep Hinglish conversational and easy to pronounce for a standard browser voice.
-      - GOAL: Provide deep, first-principles analysis of questions.
-      - CONTEXT: Use the user's health history to caution them if they are studying too much during burnout.
-      - STRUCTURE: Use headings like: [ANALYSIS], [NEURAL_MAPPING], [ACTION_PLAN].
+    const customSystemInstruction = `You are the **SwasthyaSaathi AI Mentor**, an expert companion for students. 
+    
+    SPECIAL CAPABILITY: **OCR & Vision Protocol**
+    - You can "see" and "read" everything the user uploads.
+    - If it's a photo of handwritten notes: Summarize them, find key concepts, and suggest 3 practice questions.
+    - If it's a medical/health report: Explain the key findings in simple Hinglish, highlight any "At Risk" parameters, but remind them you are an AI, not a doctor.
+    - If it's a study schedule: Optimize it based on their current burnout risk.
 
-${healthContextString}
+    Persona Alignment:
+    - You are a wise, high-energy mentor. Use Hinglish naturally (e.g., "Ye concepts toh crystal clear ho jayenge!").
+    - Remember their context: ${healthContextString}
+    - If they are "At Risk" of burnout, be extra empathetic and suggest "Zen Protocol" (meditation).
 
-Use the above user data to personalize your deep reasoning.`
-      : `You are SwasthyaSaathi, the empathetic student mentor.
-      - TONE: Friendly, motivational, and light. Natural Hinglish (e.g., "Arre waah, progress toh solid hai!").
-      - TTS GUIDANCE: Keep sentences conversational and clear. Use simple structure so it flows well when read aloud.
-      - GOAL: Quick doubt clearing and stress relief.
-      - STRUCTURE: Short paragraphs, emojis, and clear advice.
-
-${healthContextString}
-
-Refer to this data to suggest specific improvements in their daily routine.`;
+    ${isDeepThinking ? 'MODE: [DEEP REASONING ACTIVE] - Perform advanced synthesis and high-energy academic coaching.' : 'MODE: [RAPID RESPONSE] - Quick motivational support.'}
+    `;
 
     const callGemini = async (modelName: string, retryCount = 0): Promise<any> => {
       try {
@@ -306,15 +332,15 @@ Refer to this data to suggest specific improvements in their daily routine.`;
     } catch (err: any) {
       console.error("Chat error:", err);
       
-      let userFriendlyError = "I hit a glitch in my neural network. Please try again!";
+      let userFriendlyError = "SwasthyaSaathi is taking a quick break. Please try again in a moment!";
       const msg = err?.message?.toLowerCase() || "";
       
       if (msg.includes("429") || msg.includes("quota")) {
-        userFriendlyError = "I'm a bit overwhelmed with requests right now! Please wait a moment before asking again. (Quota Limit)";
+        userFriendlyError = "SwasthyaSaathi is a bit overwhelmed with requests right now! Please wait a moment. (Quota Limit)";
       } else if (msg.includes("safety") || msg.includes("blocked")) {
-        userFriendlyError = "I can't answer that because it might violate safety guidelines. Let's talk about something else!";
+        userFriendlyError = "I can't answer that because of safety guidelines. Let's talk about your study or health instead!";
       } else if (msg.includes("401") || msg.includes("unauthorized") || msg.includes("key")) {
-        userFriendlyError = "API Key is missing or invalid. If you are on Netlify, please add 'VITE_GEMINI_API_KEY' to your environment variables.";
+        userFriendlyError = "API Key is missing or invalid. Please check your Secret keys in the Settings menu.";
       } else if (msg.includes("network") || msg.includes("fetch") || msg.includes("offline")) {
         userFriendlyError = "I can't reach the internet! Please check your connection.";
       } else if (msg.includes("500") || msg.includes("503")) {
@@ -352,86 +378,82 @@ Refer to this data to suggest specific improvements in their daily routine.`;
   };
 
   const speakMessage = (index: number, text: string) => {
-    // If clicking the currently playing message, stop it
     if (playingId === index) {
       window.speechSynthesis?.cancel();
       setPlayingId(null);
       return;
     }
 
-    // Stop and clear everything
     window.speechSynthesis?.cancel();
 
     try {
       setTtsLoadingId(index);
       
-      // Advanced Cleaning: Better handle Hinglish, pauses, and abbreviations for natural TTS
+      // 1. Text Cleaning for Indian Pronunciation (Phonetic help)
       let cleanText = text
-        .replace(/[*#_~]/g, '') // Remove markdown
-        .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Remove links but keep text
-        .replace(/:\w+:/g, '') // Remove emoji shortcodes
+        .replace(/[*#_~]/g, '')
+        .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+        .replace(/:\w+:/g, '')
         .replace(/e\.g\./gi, 'for example')
         .replace(/i\.e\./gi, 'that is')
-        .replace(/SwasthyaSaathi/g, 'Swasthya Sathi') // Improve pronunciation
-        .replace(/:/g, ', ') // Replace colon with a comma for a natural pause
-        .replace(/(\.|\!|\?|\n)/g, '$1.. ') // Add pause after terminal punctuation
-        .replace(/[^\x00-\x7F]/g, "") // Remove emojis/non-ascii for stability
-        .replace(/\s+/g, ' ') // Clean up extra spaces
+        .replace(/etc\./gi, 'et cetera')
+        .replace(/SwasthyaSaathi/g, 'Swasthya Saathi') 
+        .replace(/:\s*\n/g, ': ') // Fix pauses at list starts
+        .replace(/:/g, ', ') 
         .trim();
 
-      // Split into logical chunks (sentences) for more natural pauses
-      const sentences = cleanText.match(/[^.!?]+[.!?]+/g) || [cleanText];
-      let currentSentenceIndex = 0;
+      // 2. Chunking into smaller bits for natural breath-work
+      const chunks = cleanText.split(/([.?!])\s+/).reduce((acc: string[], curr, i, arr) => {
+        if (i % 2 === 0) {
+          const punctuation = arr[i+1] || '';
+          const sentence = curr + punctuation;
+          if (sentence.trim()) acc.push(sentence.trim());
+        }
+        return acc;
+      }, []);
 
-      const playNextSentence = () => {
-        if (currentSentenceIndex >= sentences.length) {
+      let chunkIndex = 0;
+
+      const playNextChunk = () => {
+        if (chunkIndex >= chunks.length) {
           setPlayingId(null);
           return;
         }
 
-        const utterance = new SpeechSynthesisUtterance(sentences[currentSentenceIndex].trim());
+        const utterance = new SpeechSynthesisUtterance(chunks[chunkIndex]);
         
-        // Manual Voice Selection or Dynamic Fallback
-        let preferredVoice = availableVoices.find(v => v.voiceURI === selectedVoiceURI);
-        
-        if (!preferredVoice) {
-          // Prioritize high-quality Google voices if available
-          preferredVoice = availableVoices.find(v => 
-            v.name.toLowerCase().includes('google')
-          ) || availableVoices.find(v => 
-            (v.lang === 'en-IN' && v.name.toLowerCase().includes('enhanced')) ||
-            (v.lang === 'hi-IN' && v.name.toLowerCase().includes('enhanced'))
-          ) || availableVoices.find(v => 
-            v.lang === 'en-IN' || v.lang === 'hi-IN'
-          ) || availableVoices.find(v => 
-            v.name.toLowerCase().includes('india') || v.lang.includes('IN')
-          ) || availableVoices.find(v => v.lang.includes('UK'));
+        let voice = availableVoices.find(v => v.voiceURI === selectedVoiceURI);
+        if (!voice) {
+          voice = availableVoices.find(v => (v.lang.startsWith('hi') || v.lang.includes('IN')) && v.name.includes('Google')) ||
+                  availableVoices.find(v => v.lang.startsWith('hi')) ||
+                  availableVoices.find(v => v.lang.includes('IN'));
         }
 
-        if (preferredVoice) utterance.voice = preferredVoice;
+        if (voice) utterance.voice = voice;
         
-        // Mentor Tone Configuration
-        utterance.pitch = 0.95; // Slightly lower pitch for a calmer, more empathetic tone
-        utterance.rate = 0.95;  // Slightly slower rate for deliberate, mentor-like speech
+        // Natural Indian Cadence Configuration
+        // Indian English is typically slower and slightly higher pitch than US English
+        const isHindi = voice?.lang.startsWith('hi');
+        utterance.pitch = isHindi ? 1.05 : 1.0;
+        utterance.rate = isHindi ? 0.95 : 0.9; // Hindi can be slightly faster, English India should be deliberate
         utterance.volume = 1.0;
 
         utterance.onstart = () => {
-          if (currentSentenceIndex === 0) {
+          if (chunkIndex === 0) {
             setTtsLoadingId(null);
             setPlayingId(index);
           }
         };
 
         utterance.onend = () => {
-          currentSentenceIndex++;
-          // Add a small pause between sentences to simulate human breathing
-          setTimeout(playNextSentence, 300);
+          chunkIndex++;
+          // Minimal overlap/gap for natural conversational flow
+          setTimeout(playNextChunk, isHindi ? 200 : 350);
         };
 
-        utterance.onerror = (err: any) => {
-          const errorMessage = err.error || err;
-          if (errorMessage !== 'canceled') {
-            console.error("Speech sentence error:", errorMessage);
+        utterance.onerror = (err) => {
+          if (err.error !== 'interrupted' && err.error !== 'canceled') {
+            console.error("TTS Chunk Error:", err);
           }
           setPlayingId(null);
           setTtsLoadingId(null);
@@ -440,16 +462,16 @@ Refer to this data to suggest specific improvements in their daily routine.`;
         window.speechSynthesis?.speak(utterance);
       };
 
-      if (sentences.length > 0) {
-        playNextSentence();
+      if (chunks.length > 0) {
+        playNextChunk();
       } else {
         setTtsLoadingId(null);
       }
 
-    } catch (error: any) {
-      console.error("Advanced TTS error:", error);
-      setTtsLoadingId(null);
+    } catch (error) {
+      console.error("Advanced TTS Failure:", error);
       setPlayingId(null);
+      setTtsLoadingId(null);
     }
   };
 
@@ -473,7 +495,7 @@ Refer to this data to suggest specific improvements in their daily routine.`;
                 <div>
                   <div className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>SwasthyaSaathi AI</div>
                   <div className="text-[10px] text-neon-green font-bold flex items-center gap-1 uppercase tracking-wider">
-                    Multimodal Core Active
+                    Padhai bhi, Health bhi
                   </div>
                 </div>
               </div>
@@ -485,6 +507,13 @@ Refer to this data to suggest specific improvements in their daily routine.`;
                 >
                   <BrainCircuit className={`w-3.5 h-3.5 ${isDeepThinking ? 'animate-pulse text-neon-green' : ''}`} />
                   {isDeepThinking ? 'Deep ON' : 'Deep Mode'}
+                </button>
+                <button 
+                  onClick={() => setShowSettings(!showSettings)} 
+                  className={`p-2 rounded-xl transition-colors ${theme === 'dark' ? 'hover:bg-green-900/40 text-green-400' : 'hover:bg-green-50 text-green-600'}`}
+                  title="Voice Settings"
+                >
+                  <Settings className={`w-5 h-5 ${showSettings ? 'rotate-90' : ''} transition-transform`} />
                 </button>
                 <button 
                   onClick={clearChat} 
@@ -790,72 +819,97 @@ Refer to this data to suggest specific improvements in their daily routine.`;
                 )}
               </AnimatePresence>
 
-              {selectedImage && (
-                <div className="mb-3 flex items-center gap-2">
-                  <div className="relative">
-                    <img src={selectedImage.preview} className="w-12 h-12 rounded-xl border-2 border-neon-green object-cover" referrerPolicy="no-referrer" />
-                    <button onClick={() => setSelectedImage(null)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 shadow-md">
-                      <X className="w-3 h-3" />
+              {/* Input Area */}
+              <div className="flex flex-col gap-2 relative">
+                {isListening && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-1.5 bg-neon-green/90 text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg z-20"
+                  >
+                    <div className="flex gap-1">
+                      {[0, 1, 2].map(i => (
+                        <motion.div key={i} animate={{ height: [4, 10, 4] }} transition={{ repeat: Infinity, duration: 0.5, delay: i * 0.1 }} className="w-0.5 bg-white rounded-full" />
+                      ))}
+                    </div>
+                    Listening...
+                  </motion.div>
+                )}
+                
+                <div className="flex items-end gap-2 relative">
+                  <div className="flex flex-col gap-1">
+                    <button 
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`p-3 rounded-2xl transition-all shadow-sm border ${theme === 'dark' ? 'bg-green-950/40 border-green-900 text-green-400 hover:text-neon-green' : 'bg-green-50 border-green-100 text-green-600 hover:text-neon-green'}`}
+                      title="Upload notes/reports for scanning"
+                    >
+                      <ImageIcon className="w-5 h-5" />
+                    </button>
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const preview = URL.createObjectURL(file);
+                        setSelectedImage({file, preview});
+                      }
+                    }} />
+                    
+                    <motion.button 
+                      animate={isListening ? { scale: [1, 1.1, 1], boxShadow: ['0 0 0px #39FF14', '0 0 15px #39FF14', '0 0 0px #39FF14'] } : {}}
+                      transition={{ repeat: Infinity, duration: 1.5 }}
+                      onClick={toggleListening}
+                      className={`p-3 rounded-2xl transition-all shadow-sm border ${isListening ? 'bg-neon-green text-white border-neon-green' : theme === 'dark' ? 'bg-green-950/40 border-green-900 text-green-400' : 'bg-green-50 border-green-100 text-green-600'}`}
+                      title={isListening ? "Stop listening" : "Voice input"}
+                    >
+                      {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                    </motion.button>
+                  </div>
+
+                  <div className="flex-1 relative group">
+                    <AnimatePresence>
+                      {selectedImage && (
+                        <motion.div 
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0.8, opacity: 0 }}
+                          className="absolute -top-16 left-2 z-20"
+                        >
+                          <div className="relative group/img">
+                             <img src={selectedImage.preview} className="w-14 h-14 object-cover rounded-xl border-2 border-neon-green shadow-xl" />
+                             <button onClick={() => setSelectedImage(null)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg hover:scale-110 active:scale-95 transition-all">
+                               <X className="w-3 h-3" />
+                             </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    
+                    <textarea
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSend();
+                        }
+                      }}
+                      placeholder={isListening ? "Listening..." : selectedImage ? "Analyzing your document..." : "Doubt clear karein? Stress manage karein?"}
+                      className={`w-full p-4 pr-12 rounded-[24px] text-sm resize-none focus:outline-none focus:ring-4 focus:ring-neon-green/10 transition-all min-h-[50px] max-h-[150px] shadow-inner font-medium placeholder:italic ${theme === 'dark' ? 'bg-green-950/40 border-green-900 text-white placeholder:text-gray-600' : 'bg-green-50/40 border-green-100 text-green-950 placeholder:text-green-800/30'}`}
+                    />
+                    
+                    <button
+                      onClick={handleSend}
+                      disabled={(!input.trim() && !selectedImage) || isLoading}
+                      className={`absolute bottom-2.5 right-2.5 p-2 rounded-xl transition-all shadow-md active:scale-90 ${input.trim() || selectedImage ? 'bg-neon-green text-white hover:bg-[#00ff00] hover:shadow-[0_0_15px_#39FF14]' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                    >
+                      <Send className="w-5 h-5" />
                     </button>
                   </div>
-                  <span className={`text-xs font-medium ${theme === 'dark' ? 'text-green-400/60' : 'text-green-800/60'}`}>Ready to analyze...</span>
                 </div>
-              )}
-              
-              <div className="flex gap-2 items-center">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) setSelectedImage({ file, preview: URL.createObjectURL(file) });
-                  }}
-                  accept="image/*"
-                  className="hidden"
-                />
-                <button 
-                  onClick={toggleListening}
-                  className={`p-3 rounded-2xl transition-all relative group ${isListening ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/20' : theme === 'dark' ? 'bg-green-900/40 text-green-400 hover:bg-green-900/60' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}
-                  title={isListening ? "Stop listening" : "Start voice input"}
-                >
-                  {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                  {isListening && (
-                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                    </span>
-                  )}
-                </button>
-
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`p-3 rounded-2xl transition-all ${selectedImage ? 'bg-neon-green text-white' : theme === 'dark' ? 'bg-green-900/40 text-green-400 hover:bg-green-900/60' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}
-                >
-                  <ImageIcon className="w-5 h-5" />
-                </button>
-                
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                    placeholder={isDeepThinking ? "Ask a complex doubt..." : "Ask me anything..."}
-                    className={`w-full border rounded-2xl py-3.5 pl-4 pr-12 text-sm focus:outline-none focus:border-neon-green transition-all focus:ring-4 focus:ring-neon-green/5 font-medium ${theme === 'dark' ? 'bg-green-950/40 border-green-900 text-white shadow-inner' : 'bg-green-50/50 border-green-100 text-green-950'}`}
-                  />
-                  <button
-                    onClick={handleSend}
-                    disabled={(!input.trim() && !selectedImage) || isLoading}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-neon-green text-white rounded-xl hover:scale-105 transition-transform disabled:opacity-50 disabled:hover:scale-100 shadow-lg shadow-neon-green/30"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
+                <div className="mt-2 text-[9px] text-green-800/40 text-center flex items-center justify-center gap-3 font-bold uppercase tracking-wider">
+                  <span className="flex items-center gap-1"><Sparkles className="w-3 h-3 text-neon-green" /> Vision AI</span>
+                  <span className="flex items-center gap-1"><BrainCircuit className="w-3 h-3 text-neon-green" /> Reasoning</span>
+                  <span className="flex items-center gap-1"><Activity className="w-3 h-3 text-neon-green" /> Speakable</span>
                 </div>
-              </div>
-              <div className="mt-3 text-[9px] text-green-800/40 text-center flex items-center justify-center gap-3 font-bold uppercase tracking-wider">
-                <span className="flex items-center gap-1"><Sparkles className="w-3 h-3 text-neon-green" /> Vision AI</span>
-                <span className="flex items-center gap-1"><BrainCircuit className="w-3 h-3 text-neon-green" /> Reasoning</span>
-                <span className="flex items-center gap-1"><Activity className="w-3 h-3 text-neon-green" /> Speakable</span>
               </div>
             </div>
           </motion.div>

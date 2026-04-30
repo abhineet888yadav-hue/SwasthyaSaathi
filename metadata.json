@@ -1,6 +1,5 @@
 {
   "name": "SwasthyaSaathi",
   "description": "The ultimate AI Mentor for students. SwasthyaSaathi balances your academic power with physical wellness through intelligent study planning, neural health check-ins, and high-energy doubt solving.",
-  "requestFramePermissions": ["microphone"],
-  "majorCapabilities": []
+  "requestFramePermissions": ["microphone"]
 }

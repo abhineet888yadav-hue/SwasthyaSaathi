@@ -7,7 +7,7 @@ import { auth } from "../lib/firebase";
 import { onAuthStateChanged, updateProfile, signOut } from "firebase/auth";
 
 export default function Profile() {
-  const { metrics } = useHealth();
+  const { metrics, history: realHistory, isLoading: metricsLoading } = useHealth();
   const [user, setUser] = useState<any>(null);
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -28,10 +28,20 @@ export default function Profile() {
     return () => unsubscribe();
   }, [navigate]);
 
-  const [history, setHistory] = useState<any[]>([
-    { date: "2024-03-20", sleep: "7-9h", mood: "Positive", study: "4-6h", burnout: "Low" },
-    { date: "2024-03-19", sleep: "5-7h", mood: "Neutral", study: "2-4h", burnout: "Moderate" }
-  ]);
+  // Sync real history vs mock
+  const [history, setHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (realHistory && realHistory.length > 0) {
+      setHistory(realHistory.map(entry => ({
+        date: new Date(entry.date).toLocaleDateString(),
+        sleep: entry.sleepHours,
+        mood: entry.mood,
+        study: entry.studyHours,
+        burnout: entry.burnoutRisk
+      })));
+    }
+  }, [realHistory]);
   
   // Notification Preferences
   const [notifPrefs, setNotifPrefs] = useState({
