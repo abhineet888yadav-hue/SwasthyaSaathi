@@ -21,7 +21,7 @@ interface Task {
 
 import { useHealth } from "../context/HealthContext";
 import { onAuthStateChanged } from "firebase/auth";
-import { ai } from "../lib/gemini";
+import { getGeminiAI } from "../lib/gemini";
 import { auth } from "../lib/firebase";
 
 import { useTheme } from "../context/ThemeContext";
@@ -132,6 +132,7 @@ export default function Dashboard() {
         "burnoutRisk": "e.g. Low"
       }`;
 
+      const ai = getGeminiAI();
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,
@@ -173,6 +174,7 @@ Suggest 3 specific, actionable study or wellness tasks for the next hour in Hing
 Return a strict JSON array of objects: [{"task": "...", "time": "...", "energy": 1-10}].
 No markdown, just raw JSON.`;
 
+      const ai = getGeminiAI();
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,

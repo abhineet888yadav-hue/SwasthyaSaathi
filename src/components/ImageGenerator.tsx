@@ -4,7 +4,7 @@ import {
   Wand2, Download, RefreshCw, Layers, 
   Maximize2, Sparkles, Loader2, RotateCcw
 } from "lucide-react";
-import { ai } from "../lib/gemini";
+import { getGeminiAI } from "../lib/gemini";
 
 type AspectRatio = "1:1" | "2:3" | "3:2" | "3:4" | "4:3" | "9:16" | "16:9" | "21:9";
 
@@ -30,6 +30,7 @@ export default function ImageGenerator() {
     setError(null);
 
     try {
+      const ai = getGeminiAI();
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-image",
         contents: {
@@ -53,9 +54,9 @@ export default function ImageGenerator() {
     } catch (err: any) {
       console.error("Image generation error:", err);
       const msg = err?.message?.toLowerCase() || "";
-      const isKeyError = msg.includes("key") || msg.includes("401") || msg.includes("unauthorized");
+      const isKeyError = msg.includes("key") || msg.includes("401") || msg.includes("unauthorized") || msg.includes("missing");
       setError(isKeyError 
-        ? "⚠️ API Key is missing or invalid. Please add 'VITE_GEMINI_API_KEY' to your Netlify environment variables."
+        ? "⚠️ API Key is missing or invalid. Please check your Secret keys in the Settings menu."
         : (err.message || "Failed to generate image. Please try again."));
     } finally {
       setIsGenerating(false);

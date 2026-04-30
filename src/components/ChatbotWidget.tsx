@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useHealth } from "../context/HealthContext";
-import { ai } from "../lib/gemini";
+import { getGeminiAI } from "../lib/gemini";
 import { ThinkingLevel, Modality } from "@google/genai";
 
 import NeuralLoader from "./NeuralLoader";
@@ -294,6 +294,7 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
 
     const callGemini = async (modelName: string, retryCount = 0): Promise<any> => {
       try {
+        const ai = getGeminiAI();
         return await ai.models.generateContent({
           model: modelName,
           contents: contents,
@@ -339,7 +340,7 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
         userFriendlyError = "SwasthyaSaathi is a bit overwhelmed with requests right now! Please wait a moment. (Quota Limit)";
       } else if (msg.includes("safety") || msg.includes("blocked")) {
         userFriendlyError = "I can't answer that because of safety guidelines. Let's talk about your study or health instead!";
-      } else if (msg.includes("401") || msg.includes("unauthorized") || msg.includes("key")) {
+      } else if (msg.includes("api key") || msg.includes("unauthorized") || msg.includes("missing") || msg.includes("api_key_missing")) {
         userFriendlyError = "API Key is missing or invalid. Please check your Secret keys in the Settings menu.";
       } else if (msg.includes("network") || msg.includes("fetch") || msg.includes("offline")) {
         userFriendlyError = "I can't reach the internet! Please check your connection.";

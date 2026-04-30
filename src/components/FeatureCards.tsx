@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import NeuralLoader from "./NeuralLoader";
 import ReactMarkdown from "react-markdown";
-import { ai } from "../lib/gemini";
+import { getGeminiAI } from "../lib/gemini";
 import { ThinkingLevel, Modality } from "@google/genai";
 
 const features = [
@@ -136,6 +136,7 @@ function MiniChatCard({ feature, index }: { feature: any, index: number }) {
         });
       }
 
+      const ai = getGeminiAI();
       const response = await ai.models.generateContent({
         model: "gemini-3.1-pro-preview",
         contents: [
@@ -451,6 +452,7 @@ function StudyPlanCard({ feature, index }: { feature: any, index: number }) {
     setPlan(null);
 
     try {
+      const ai = getGeminiAI();
       const response = await ai.models.generateContent({
         model: "gemini-3.1-pro-preview",
         contents: [{ role: "user", parts: [{ text: `Generate study plan for: ${topic}` }] }],
@@ -462,9 +464,9 @@ function StudyPlanCard({ feature, index }: { feature: any, index: number }) {
       setPlan(response.text || "Failed to generate plan.");
     } catch (error: any) {
       console.error("Plan generation error:", error);
-      const isKeyError = error?.message?.includes("key") || error?.message?.includes("401");
+      const isKeyError = error?.message?.includes("key") || error?.message?.includes("401") || error?.message?.includes("missing");
       setPlan(isKeyError 
-        ? "⚠️ API Key is missing or invalid. If you are on Netlify, please add 'VITE_GEMINI_API_KEY' to your environment variables."
+        ? "⚠️ API Key is missing or invalid. Please check your Secret keys in the Settings menu."
         : "Sorry, I encountered an error with Google Studio AI generating your study plan. Please try again later.");
     } finally {
       setIsLoading(false);
@@ -569,6 +571,7 @@ function RevisionCard({ feature, index }: { feature: any, index: number }) {
       2. Generate a "Mini Question Paper" (5 questions: 2 short, 2 medium, 1 long).
       Provide in Markdown.`;
 
+      const ai = getGeminiAI();
       const response = await ai.models.generateContent({
         model: "gemini-3.1-pro-preview",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -851,6 +854,7 @@ function HealthCheckCard({ feature, index }: { feature: any, index: number }) {
       Stress: ${finalAnswers.stress}
       Recent Trends: ${JSON.stringify(recentHistory)}`;
 
+      const ai = getGeminiAI();
       const response = await ai.models.generateContent({
         model: "gemini-3.1-pro-preview",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -1065,6 +1069,7 @@ function ChapterAnalysisCard({ feature, index }: { feature: any, index: number }
     try {
       const prompt = `Analyze the academic chapter: "${chapterName}". Provide a brief summary, 4-6 topics with descriptions and key points, and 3 specific tips. Respond in strictly valid JSON.`;
 
+      const ai = getGeminiAI();
       const response = await ai.models.generateContent({
         model: "gemini-3.1-pro-preview",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -1099,7 +1104,11 @@ function ChapterAnalysisCard({ feature, index }: { feature: any, index: number }
       setResult(data);
     } catch (err: any) {
       console.error("Chapter Analysis error:", err);
-      setError("Failed to analyze chapter. Please check the name.");
+      const msg = err?.message?.toLowerCase() || "";
+      const isKeyError = msg.includes("key") || msg.includes("401") || msg.includes("unauthorized") || msg.includes("missing");
+      setError(isKeyError 
+        ? "API Key missing or invalid. Check Secret keys."
+        : "Failed to analyze chapter. Please check the name.");
     } finally {
       setIsAnalyzing(false);
     }
