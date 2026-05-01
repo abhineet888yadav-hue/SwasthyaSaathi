@@ -589,9 +589,21 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
               {messages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                   <div className={`flex gap-3 max-w-[85%] ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-                    <div className={`w-9 h-9 rounded-2xl flex-shrink-0 flex items-center justify-center shadow-sm ${msg.role === "user" ? "bg-green-800" : theme === 'dark' ? "bg-green-900/40 border border-green-800" : "bg-white border border-green-100"}`}>
-                      {msg.role === "user" ? <User className="w-5 h-5 text-white" /> : <Bot className="w-5 h-5 text-neon-green" />}
-                    </div>
+                    <motion.button 
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => msg.role === "model" && speakMessage(i, msg.content)}
+                      className={`w-9 h-9 rounded-2xl flex-shrink-0 flex items-center justify-center shadow-sm transition-all ${
+                        msg.role === "user" 
+                          ? "bg-green-800" 
+                          : theme === 'dark' 
+                            ? `border ${playingId === i ? 'bg-neon-green/20 border-neon-green shadow-[0_0_15px_#39FF14]' : 'bg-green-900/40 border-green-800 hover:border-neon-green/50'}` 
+                            : `border ${playingId === i ? 'bg-neon-green/10 border-neon-green shadow-lg' : 'bg-white border-green-100 hover:border-neon-green/50'}`
+                      }`}
+                      title={msg.role === "model" ? "Listen to response" : "User Profile"}
+                    >
+                      {msg.role === "user" ? <User className="w-5 h-5 text-white" /> : <Bot className={`w-5 h-5 ${playingId === i ? 'text-neon-green animate-pulse' : 'text-neon-green'}`} />}
+                    </motion.button>
                     <div className="space-y-2">
                       <motion.div 
                         animate={playingId === i ? {
@@ -838,14 +850,16 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
                 )}
                 
                 <div className="flex items-end gap-2 relative">
-                  <div className="flex flex-col gap-1">
-                    <button 
+                  <div className="flex flex-col gap-1.5">
+                    <motion.button 
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => fileInputRef.current?.click()}
-                      className={`p-3 rounded-2xl transition-all shadow-sm border ${theme === 'dark' ? 'bg-green-950/40 border-green-900 text-green-400 hover:text-neon-green' : 'bg-green-50 border-green-100 text-green-600 hover:text-neon-green'}`}
+                      className={`p-3 rounded-2xl transition-all shadow-sm border group/btn ${theme === 'dark' ? 'bg-green-950/40 border-green-900 text-green-400 hover:border-neon-green/30' : 'bg-green-50/50 border-green-100 text-green-600 hover:border-neon-green/30'}`}
                       title="Upload notes/reports for scanning"
                     >
-                      <ImageIcon className="w-5 h-5" />
-                    </button>
+                      <ImageIcon className="w-5 h-5 group-hover/btn:text-neon-green transition-colors" />
+                    </motion.button>
                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
@@ -855,28 +869,33 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
                     }} />
                     
                     <motion.button 
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       animate={isListening ? { scale: [1, 1.1, 1], boxShadow: ['0 0 0px #39FF14', '0 0 15px #39FF14', '0 0 0px #39FF14'] } : {}}
                       transition={{ repeat: Infinity, duration: 1.5 }}
                       onClick={toggleListening}
-                      className={`p-3 rounded-2xl transition-all shadow-sm border ${isListening ? 'bg-neon-green text-white border-neon-green' : theme === 'dark' ? 'bg-green-950/40 border-green-900 text-green-400' : 'bg-green-50 border-green-100 text-green-600'}`}
+                      className={`p-3 rounded-2xl transition-all shadow-sm border ${isListening ? 'bg-neon-green text-white border-neon-green' : theme === 'dark' ? 'bg-green-950/40 border-green-900 text-green-400 hover:border-neon-green/30' : 'bg-green-50/50 border-green-100 text-green-600 hover:border-neon-green/30'}`}
                       title={isListening ? "Stop listening" : "Voice input"}
                     >
-                      {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                      {isListening ? <MicOff className="w-5 h-5" /> : <Mic className={`w-5 h-5 ${isListening ? '' : 'hover:text-neon-green transition-colors'}`} />}
                     </motion.button>
                   </div>
 
-                  <div className="flex-1 relative group">
+                  <div className="flex-1 relative">
                     <AnimatePresence>
                       {selectedImage && (
                         <motion.div 
-                          initial={{ scale: 0.8, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0.8, opacity: 0 }}
+                          initial={{ scale: 0.8, opacity: 0, y: 10 }}
+                          animate={{ scale: 1, opacity: 1, y: 0 }}
+                          exit={{ scale: 0.8, opacity: 0, y: 10 }}
                           className="absolute -top-16 left-2 z-20"
                         >
-                          <div className="relative group/img">
-                             <img src={selectedImage.preview} className="w-14 h-14 object-cover rounded-xl border-2 border-neon-green shadow-xl" />
-                             <button onClick={() => setSelectedImage(null)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg hover:scale-110 active:scale-95 transition-all">
+                          <div className="relative">
+                             <img src={selectedImage.preview} className="w-14 h-14 object-cover rounded-xl border-2 border-neon-green shadow-[0_0_15px_#39FF1450]" />
+                             <button 
+                               onClick={() => setSelectedImage(null)} 
+                               className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg hover:scale-110 active:scale-95 transition-all border border-white/20"
+                             >
                                <X className="w-3 h-3" />
                              </button>
                           </div>
@@ -894,16 +913,18 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
                         }
                       }}
                       placeholder={isListening ? "Listening..." : selectedImage ? "Analyzing your document..." : "Doubt clear karein? Stress manage karein?"}
-                      className={`w-full p-4 pr-12 rounded-[24px] text-sm resize-none focus:outline-none focus:ring-4 focus:ring-neon-green/10 transition-all min-h-[50px] max-h-[150px] shadow-inner font-medium placeholder:italic ${theme === 'dark' ? 'bg-green-950/40 border-green-900 text-white placeholder:text-gray-600' : 'bg-green-50/40 border-green-100 text-green-950 placeholder:text-green-800/30'}`}
+                      className={`w-full p-4 pr-14 rounded-[28px] text-sm resize-none focus:outline-none focus:ring-4 focus:ring-neon-green/10 transition-all min-h-[56px] max-h-[150px] shadow-inner font-medium placeholder:italic ${theme === 'dark' ? 'bg-green-950/40 border-green-900 text-white placeholder:text-gray-600' : 'bg-green-50/40 border-green-100 text-green-950 placeholder:text-green-800/30'}`}
                     />
                     
-                    <button
+                    <motion.button
+                      whileHover={input.trim() || selectedImage ? { scale: 1.05 } : {}}
+                      whileTap={input.trim() || selectedImage ? { scale: 0.95 } : {}}
                       onClick={handleSend}
                       disabled={(!input.trim() && !selectedImage) || isLoading}
-                      className={`absolute bottom-2.5 right-2.5 p-2 rounded-xl transition-all shadow-md active:scale-90 ${input.trim() || selectedImage ? 'bg-neon-green text-white hover:bg-[#00ff00] hover:shadow-[0_0_15px_#39FF14]' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                      className={`absolute bottom-2 right-2 p-3 rounded-2xl transition-all shadow-md ${input.trim() || selectedImage ? 'bg-neon-green text-black hover:shadow-[0_0_20px_#39FF14]' : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-30 shadow-none'}`}
                     >
                       <Send className="w-5 h-5" />
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
                 <div className="mt-2 text-[9px] text-green-800/40 text-center flex items-center justify-center gap-3 font-bold uppercase tracking-wider">

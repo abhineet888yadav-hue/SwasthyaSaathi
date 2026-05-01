@@ -207,6 +207,8 @@ function MainContent() {
         )}
       </main>
       <Footer />
+      {!isUnverified && <ChatbotWidget />}
+      {!isUnverified && <GeminiKeyModal />}
     </motion.div>
   );
 }
@@ -217,8 +219,6 @@ export default function App() {
       <HealthProvider>
         <BrowserRouter>
           <MainContent />
-          <ChatbotWidget />
-          <GeminiKeyModal />
         </BrowserRouter>
       </HealthProvider>
     </ThemeProvider>
