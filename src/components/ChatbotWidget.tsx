@@ -334,8 +334,8 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
     } catch (err: any) {
       console.error("Chat error:", err);
       
-      let userFriendlyError = "SwasthyaSaathi is taking a quick break. Please try again in a moment!";
       const msg = err?.message?.toLowerCase() || "";
+      let userFriendlyError = `SwasthyaSaathi is taking a quick break. Error: ${msg}`;
       
       if (msg.includes("429") || msg.includes("quota")) {
         userFriendlyError = "SwasthyaSaathi is a bit overwhelmed with requests right now! Please wait a moment. (Quota Limit)";
