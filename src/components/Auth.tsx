@@ -46,16 +46,28 @@ export default function Auth() {
     setLoading(true);
     setError("");
     try {
+      googleProvider.setCustomParameters({ prompt: 'select_account' });
       await signInWithPopup(auth, googleProvider);
       navigate("/");
     } catch (err: any) {
       console.error("Google sign in error:", err);
-      if (err.code === "auth/popup-closed-by-user") {
-        setError("Popup kyu band kar diya? Sign In toh pura karlo!");
-      } else if (err.code === "auth/popup-blocked") {
-        setError("Arrey! Browser ne popup block kar diya. Settings check karo.");
+      const errorCode = err.code;
+      const errorMessage = err.message;
+      
+      if (errorCode === "auth/popup-closed-by-user") {
+        setError("Arrey! Popup kyu band kar diya? Sign-in process pura nahi hua. Ek baar phir try karein?");
+      } else if (errorCode === "auth/popup-blocked") {
+        setError("Browser ne popup block kar diya hai. Top right mein icon check karein aur allow karein, ya phir incognito window check karein.");
+      } else if (errorCode === "auth/unauthorized-domain") {
+        setError(`Aapka domain ('${window.location.hostname}') Firebase Console mien authorized nahi hai. Domain add karein: Authentication > Settings > Authorized Domains.`);
+      } else if (errorCode === "auth/operation-not-allowed") {
+        setError("Google Sign-In enable nahi kiya gaya hai. Firebase Console mien 'Google' provider enable karein.");
+      } else if (errorCode === "auth/internal-error") {
+        setError("Kuch internal error hai. Check karein ki Firebase config sahi hai aur domain authorized hai.");
+      } else if (errorCode === "auth/network-request-failed") {
+        setError("Network issue! Browser internet se connect nahi ho pa raha. Internet check karein.");
       } else {
-        setError("Google sign in mien kuch issue ho gaya. Phir se try karein?");
+        setError(`Oho! Sign-in mien issue aa raha hai. Error Code: ${errorCode || 'Unknown'}. Try refreshing the page (Ctrl+R) or redeploy on Vercel.`);
       }
     } finally {
       setLoading(false);
@@ -91,8 +103,10 @@ export default function Auth() {
         setError("Credential mien kuch gadbad hai. Phir se check karo!");
       } else if (err.code === "auth/too-many-requests") {
         setError("Bahut saare attempts ho gaye! Thodi der rukk jao, phir try karna.");
+      } else if (err.code === "auth/network-request-failed") {
+        setError("Network issue! Check your internet connection or Firebase service status.");
       } else {
-        setError("Kuch technical issue aa gaya! Network check karke phir se try karein?");
+        setError("Technical issue! Error: " + (err.message || "Unknown") + ". Network check karein ya Console check karein.");
       }
     } finally {
       setLoading(false);
