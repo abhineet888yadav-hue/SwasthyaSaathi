@@ -59,15 +59,15 @@ export default function Auth() {
       } else if (errorCode === "auth/popup-blocked") {
         setError("Browser ne popup block kar diya hai. Top right mein icon check karein aur allow karein, ya phir incognito window check karein.");
       } else if (errorCode === "auth/unauthorized-domain") {
-        setError(`Aapka domain ('${window.location.hostname}') Firebase Console mien authorized nahi hai. Domain add karein: Authentication > Settings > Authorized Domains.`);
+        setError(`Aapka domain ('${window.location.hostname}') Firebase Console mien authorized nahi hai! Go to: Authentication > Settings > Authorized Domains aur wahan '${window.location.hostname}' copy-paste kar dein.`);
       } else if (errorCode === "auth/operation-not-allowed") {
         setError("Google Sign-In enable nahi kiya gaya hai. Firebase Console mien 'Google' provider enable karein.");
       } else if (errorCode === "auth/internal-error") {
         setError("Kuch internal error hai. Check karein ki Firebase config sahi hai aur domain authorized hai.");
       } else if (errorCode === "auth/network-request-failed") {
-        setError("Network issue! Browser internet se connect nahi ho pa raha. Internet check karein.");
+        setError("Network issue! Browser internet se connect nahi ho pa raha. Internet check karein ya VPN off karke dekhein.");
       } else {
-        setError(`Oho! Sign-in mien issue aa raha hai. Error Code: ${errorCode || 'Unknown'}. Try refreshing the page (Ctrl+R) or redeploy on Vercel.`);
+        setError(`Oho! Sign-in mien issue aa raha hai. Error Code: ${errorCode || 'Internal Error'}. Message: ${errorMessage || 'Unknown issue'}. Try reloading (Ctrl+R) or confirm your Firebase API settings.`);
       }
     } finally {
       setLoading(false);
@@ -106,7 +106,7 @@ export default function Auth() {
       } else if (err.code === "auth/network-request-failed") {
         setError("Network issue! Check your internet connection or Firebase service status.");
       } else {
-        setError("Technical issue! Error: " + (err.message || "Unknown") + ". Network check karein ya Console check karein.");
+        setError(`Technical issue! Error: ${err.code || 'Unknown'}. Message: ${err.message || 'Details missing'}. Network check karein ya Console check karein.`);
       }
     } finally {
       setLoading(false);

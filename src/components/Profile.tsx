@@ -66,7 +66,7 @@ export default function Profile() {
       setMessage({ type: "success", text: "Profile update ho gaya, Boss! Locals nodes synced." });
     } catch (err: any) {
       console.error("Profile update error:", err);
-      setMessage({ type: "error", text: "Profile update mien issue aa gaya. Phir se try karein?" });
+      setMessage({ type: "error", text: `Profile update mien issue aa gaya. Error: ${err.message || 'Unknown'}. Phir se try karein?` });
     } finally {
       setUpdating(false);
     }
