@@ -56,7 +56,7 @@ export default function ImageGenerator() {
       const msg = err?.message?.toLowerCase() || "";
       const isKeyError = msg.includes("key") || msg.includes("401") || msg.includes("unauthorized") || msg.includes("missing");
       setError(isKeyError 
-        ? "⚠️ AI Key setup nahi hai. Screen ke bottom right mein 'Fix AI Key' button dhoondo aur setup kar lo!"
+        ? "⚠️ API Key Invalid or Missing. Please ensure the key AIzaSyCDY52-qmmKrDWOzkDZ6mcpndt4SDaj5NA is valid."
         : (err.message || "Failed to generate image. Please try again."));
     } finally {
       setIsGenerating(false);

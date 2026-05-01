@@ -168,7 +168,7 @@ End with 'Need more detail? Just ask!' only if appropriate for the flow.`
       const msg = error?.message || "";
       let errorContent = "I encountered an error. Please try again.";
       if (msg.includes("API_KEY") || msg.includes("api_key_missing")) {
-        errorContent = "⚠️ AI Key setup nahi hai. Screen ke bottom right mein 'Fix AI Key' button dhoondo aur setup kar lo!";
+        errorContent = "⚠️ API Key Invalid or Missing. Please ensure the key AIzaSyCDY52-qmmKrDWOzkDZ6mcpndt4SDaj5NA is valid.";
       } else if (msg.includes("quota")) {
         errorContent = "⚠️ AI Quota exceeded. Please try again later.";
       }
@@ -474,7 +474,7 @@ function StudyPlanCard({ feature, index }: { feature: any, index: number }) {
       const msg = error?.message || "";
       const isKeyError = msg.includes("key") || msg.includes("401") || msg.includes("missing") || msg.includes("API_KEY");
       setPlan(isKeyError 
-        ? "⚠️ AI Key setup nahi hai. Screen ke bottom right mein 'Fix AI Key' button dhoondo aur setup kar lo!"
+        ? "⚠️ API Key Invalid or Missing. Please ensure it is valid."
         : "Sorry, I encountered an error with Google Studio AI generating your study plan. Please try again later.");
     } finally {
       setIsLoading(false);
@@ -599,7 +599,7 @@ function RevisionCard({ feature, index }: { feature: any, index: number }) {
       console.error("Revision error:", error);
       const msg = error?.message || "";
       if (msg.includes("API_KEY") || msg.includes("key") || msg.includes("missing")) {
-        setError("⚠️ AI Key missing. Click 'Fix AI Key' button at bottom right!");
+        setError("⚠️ API Key invalid or missing.");
       } else {
         setError("I encountered an error. Please try again.");
       }
