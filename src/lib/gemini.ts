@@ -5,8 +5,8 @@ let genAI: GoogleGenAI | null = null;
 export function getGeminiAI() {
   if (genAI) return genAI;
 
-  // 1. Check environment variables
-  let apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+  // 1. Check environment variables (Prioritize process.env.GEMINI_API_KEY for this platform)
+  let apiKey: string | undefined = process.env.GEMINI_API_KEY;
   
   // 2. Check localStorage (User provided fallback)
   if (!apiKey && typeof window !== 'undefined') {
@@ -14,7 +14,7 @@ export function getGeminiAI() {
   }
   
   if (!apiKey) {
-    const errorMsg = "Gemini API Key missing! Please set VITE_GEMINI_API_KEY in environment or provide it in settings.";
+    const errorMsg = "Gemini API Key missing! Please set GEMINI_API_KEY in environment or provide it in settings.";
     console.warn(errorMsg);
     throw new Error("API_KEY_MISSING");
   }

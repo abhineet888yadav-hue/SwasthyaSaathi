@@ -4,7 +4,7 @@ import {
   MessageCircle, Send, X, Bot, User, Loader2, Sparkles, 
   Trash2, BrainCircuit, Image as ImageIcon, Volume2, 
   Pause, Play, Activity, RefreshCw, AlertCircle,
-  ThumbsUp, ThumbsDown, Mic, MicOff, Settings
+  ThumbsUp, ThumbsDown, Mic, MicOff, Settings, Moon, Calendar
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useHealth } from "../context/HealthContext";
@@ -210,19 +210,20 @@ export default function ChatbotWidget() {
     });
   };
 
-  const handleSend = async () => {
-    if ((!input.trim() && !selectedImage) || isLoading) return;
+  const handleSend = async (overrideInput?: string) => {
+    const textToSend = overrideInput || input;
+    if ((!textToSend.trim() && !selectedImage) || isLoading) return;
 
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const userMessage: Message = { 
       role: "user", 
-      content: input || (selectedImage ? "Analyze this image." : ""),
+      content: textToSend || (selectedImage ? "Analyze this image." : ""),
       image: selectedImage?.preview,
       timestamp
     };
 
     setMessages(prev => [...prev, userMessage].slice(-20));
-    setInput("");
+    if (!overrideInput) setInput("");
     const imgToProcess = selectedImage;
     setSelectedImage(null);
     setIsLoading(true);
@@ -810,6 +811,35 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
 
             {/* Input and Controls */}
             <div className={`p-4 backdrop-blur-md border-t shrink-0 transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0a201a] border-green-900' : 'bg-white/80 border-green-100'}`}>
+              
+              {/* Quick Action Suggestions */}
+              {!isLoading && messages.length < 4 && (
+                <div className="flex gap-2 overflow-x-auto pb-4 mb-1 no-scrollbar scrollbar-hide">
+                  {[
+                    { label: "Study Tips", icon: Sparkles, text: "Mujhe aaj ke liye productive study tips chahiye." },
+                    { label: "Doubt Solver", icon: BrainCircuit, text: "Explain a complex concept using a simple analogy." },
+                    { label: "Burnout Check", icon: Activity, text: "Help me check if I'm reaching burnout." },
+                    { label: "Relax Mode", icon: Moon, text: "Give me a quick 5-min relaxation exercise." }
+                  ].map((s, i) => (
+                    <motion.button
+                      key={i}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.5 + i * 0.1 }}
+                      onClick={() => {
+                        setInput(s.text);
+                        // Trigger send after a tiny delay to show the text
+                        setTimeout(() => handleSend(s.text), 100);
+                      }}
+                      className={`whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${theme === 'dark' ? 'bg-green-900/40 border-green-800 text-neon-green hover:border-neon-green/50' : 'bg-white border-green-100 text-green-700 hover:border-neon-green shadow-sm'}`}
+                    >
+                      <s.icon className="w-3 h-3" />
+                      {s.label}
+                    </motion.button>
+                  ))}
+                </div>
+              )}
+
               <AnimatePresence>
                 {error && (
                   <motion.div 
@@ -919,7 +949,7 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
                     <motion.button
                       whileHover={input.trim() || selectedImage ? { scale: 1.05 } : {}}
                       whileTap={input.trim() || selectedImage ? { scale: 0.95 } : {}}
-                      onClick={handleSend}
+                      onClick={() => handleSend()}
                       disabled={(!input.trim() && !selectedImage) || isLoading}
                       className={`absolute bottom-2 right-2 p-3 rounded-2xl transition-all shadow-md ${input.trim() || selectedImage ? 'bg-neon-green text-black hover:shadow-[0_0_20px_#39FF14]' : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-30 shadow-none'}`}
                     >

@@ -51,20 +51,22 @@ export default function Navbar() {
     // Close menu first
     setIsOpen(false);
     
-    // Smooth scroll with a delay to let menu close completely on mobile
+    // Smooth scroll with a slight delay to let the menu close first
     setTimeout(() => {
       const element = document.getElementById(sectionId);
       if (element) {
-        const offset = 90; // Slightly more offset for safe margins
-        const elementPosition = element.getBoundingClientRect().top;
-        const offsetPosition = elementPosition + window.scrollY - offset;
+        const offset = 80;
+        const bodyRect = document.body.getBoundingClientRect().top;
+        const elementRect = element.getBoundingClientRect().top;
+        const elementPosition = elementRect - bodyRect;
+        const offsetPosition = elementPosition - offset;
 
         window.scrollTo({
           top: offsetPosition,
           behavior: "smooth"
         });
       }
-    }, 350);
+    }, 200);
   };
 
   return (

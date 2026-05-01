@@ -28,6 +28,7 @@ interface Task {
 
 import { useHealth } from "../context/HealthContext";
 import { getGeminiAI } from "../lib/gemini";
+import { Type } from "@google/genai";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../lib/firebase";
 
@@ -132,27 +133,32 @@ export default function Dashboard() {
       - Mood Progress: ${metrics.moodProgress}/100
       - Burnout Risk: ${metrics.burnoutProgress}/100
       
-      Return a strict JSON object with exactly this format (Hinglish for healthTip):
-      {
-        "status": "Safe" | "At Risk" | "Problem Detected",
-        "healthTip": "Insightful neural tip in Hinglish noticing any trends.",
-        "recommendations": ["Rec 1", "Rec 2", "Rec 3"],
-        "sleepProgress": <number>,
-        "studyProgress": <number>,
-        "moodProgress": <number>,
-        "burnoutProgress": <number>,
-        "sleepHours": "e.g. 7.5h",
-        "studyHours": "e.g. 4.2h",
-        "mood": "e.g. Focused",
-        "burnoutRisk": "e.g. Low"
-      }`;
+      Return a coaching insight object. Use professional yet relatable Hinglish for the healthTip (e.g., "Sleep pattern thoda off hai, aaj 15 min pehle so jao").`;
 
       const ai = getGeminiAI();
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: prompt,
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: {
-          responseMimeType: "application/json"
+          systemInstruction: "You are SwasthyaSaathi, a wise and compassionate mentor. You analyze health trends to prevent student burnout. Response MUST be valid JSON.",
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              status: { type: Type.STRING, enum: ["Safe", "At Risk", "Problem Detected"] },
+              healthTip: { type: Type.STRING },
+              recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
+              sleepProgress: { type: Type.NUMBER },
+              studyProgress: { type: Type.NUMBER },
+              moodProgress: { type: Type.NUMBER },
+              burnoutProgress: { type: Type.NUMBER },
+              sleepHours: { type: Type.STRING },
+              studyHours: { type: Type.STRING },
+              mood: { type: Type.STRING },
+              burnoutRisk: { type: Type.STRING }
+            },
+            required: ["status", "healthTip", "recommendations", "sleepProgress", "studyProgress", "moodProgress", "burnoutProgress", "sleepHours", "studyHours", "mood", "burnoutRisk"]
+          }
         }
       });
 
