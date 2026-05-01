@@ -36,7 +36,7 @@ export default function Navbar() {
 
   const handleSignOut = async () => {
     await signOut(auth);
-    navigate("/");
+    navigate("/signin");
     setIsOpen(false);
   };
 

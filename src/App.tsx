@@ -39,10 +39,14 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 
 import NeuralLoader from "./components/NeuralLoader";
 import GeminiKeyModal from "./components/GeminiKeyModal";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "./lib/firebase";
 
 function MainContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadingStep, setLoadingStep] = useState(0);
+  const [user, setUser] = useState<any>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const { theme } = useTheme();
 
   const loadingStatuses = [
@@ -56,6 +60,11 @@ function MainContent() {
   ];
 
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsAuthChecking(false);
+    });
+
     const statusInterval = setInterval(() => {
       setLoadingStep(prev => (prev < loadingStatuses.length - 1 ? prev + 1 : prev));
     }, 450);
@@ -65,14 +74,17 @@ function MainContent() {
     }, 3500);
 
     return () => {
+      unsubscribe();
       clearTimeout(timer);
       clearInterval(statusInterval);
     };
   }, []);
 
-  return (
-    <AnimatePresence mode="wait">
-      {isLoading ? (
+  const isUnverified = user && !user.emailVerified;
+
+  if (isLoading || isAuthChecking) {
+    return (
+      <AnimatePresence mode="wait">
         <motion.div
           key="loader"
           initial={{ opacity: 1 }}
@@ -166,30 +178,36 @@ function MainContent() {
             </div>
           </div>
         </motion.div>
-      ) : (
-        <motion.div
-          key="content"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className={`min-h-screen selection:bg-neon-green selection:text-white flex flex-col transition-colors duration-500 overflow-x-hidden ${theme === 'dark' ? 'bg-[#051510] text-gray-100' : 'bg-white text-green-900'}`}
-        >
-          <Navbar />
-          <main className="flex-1">
-            <AnimatePresence mode="wait">
-              <PageTransition>
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/signin" element={<Auth />} />
-                  <Route path="/signup" element={<Auth />} />
-                  <Route path="/profile" element={<Profile />} />
-                </Routes>
-              </PageTransition>
-            </AnimatePresence>
-          </main>
-          <Footer />
-        </motion.div>
-      )}
-    </AnimatePresence>
+      </AnimatePresence>
+    );
+  }
+
+  return (
+    <motion.div
+      key="content"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className={`min-h-screen selection:bg-neon-green selection:text-white flex flex-col transition-colors duration-500 overflow-x-hidden ${theme === 'dark' ? 'bg-[#051510] text-gray-100' : 'bg-white text-green-900'}`}
+    >
+      <Navbar />
+      <main className="flex-1">
+        {isUnverified ? (
+          <Auth />
+        ) : (
+          <AnimatePresence mode="wait">
+            <PageTransition>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/signin" element={<Auth />} />
+                <Route path="/signup" element={<Auth />} />
+                <Route path="/profile" element={<Profile />} />
+              </Routes>
+            </PageTransition>
+          </AnimatePresence>
+        )}
+      </main>
+      <Footer />
+    </motion.div>
   );
 }
 
