@@ -4,20 +4,20 @@ import { motion, AnimatePresence } from "motion/react";
 
 const faqs = [
   {
-    question: "Can it answer in Hindi?",
-    answer: "Yes! SwasthyaSaathi is fully capable of understanding and responding in Hindi and English to make learning more accessible."
+    question: "Kya ye Hindi mein answer de sakta hai?",
+    answer: "Bilkul! SwasthyaSaathi Hinglish expert hai. Hum English aur Hindi dono samajhte hain taaki aapko padhai mein koi tension na ho."
   },
   {
-    question: "How does it help with stress?",
-    answer: "Our AI analyzes your tone and patterns. If it detects signs of stress or burnout, it suggests breaks, breathing exercises, or a lighter study schedule."
+    question: "Stress detection kaise kaam karta hai?",
+    answer: "Humara AI aapke study patterns aur tone ko analyze karta hai. Agar burnout ke symptoms milte hain, toh hum break, meditation aur light schedule suggest karte hain, Boss!"
   },
   {
-    question: "Is the study plan customizable?",
-    answer: "Absolutely. You can tell the AI about your exam dates and preferred study hours, and it will generate a plan that fits your life."
+    question: "Kya study plan customize ho sakta hai?",
+    answer: "Haan ji! Aap apne exam dates aur preferred timings batayein, baaki neural mapping aur logic hum handle kar lenge."
   },
   {
-    question: "Can I use it for any subject?",
-    answer: "Yes, SwasthyaSaathi can help with a wide range of subjects from Science and Math to Humanities and Languages."
+    question: "B.Tech ya GATE ke liye helpful hai?",
+    answer: "Sirf Class 5 hi nahi, Higher Education level topics aur competitive exams ke liye bhi humara logic optimize hai."
   }
 ];
 
@@ -31,17 +31,18 @@ export default function FAQ() {
     <section id="faq" className={`py-20 transition-colors duration-500 ${theme === 'dark' ? 'bg-[#051510]' : 'bg-green-50/30'}`}>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <h2 className={`text-3xl md:text-5xl font-display font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>Frequently Asked <span className="neon-text">Questions</span></h2>
+          <h2 className={`text-4xl md:text-6xl font-display font-black tracking-tighter mb-4 ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>Questions? <span className="neon-text italic">Sorted.</span></h2>
+          <p className={`text-lg font-medium opacity-60 ${theme === 'dark' ? 'text-gray-400' : 'text-green-800'}`}>Everything you need to know about your neural companion.</p>
         </div>
 
         <div className="space-y-4">
           {faqs.map((faq, index) => (
-            <div key={index} className={`rounded-2xl overflow-hidden transition-all duration-300 border ${theme === 'dark' ? 'bg-green-950/20 border-green-900 group' : 'glass bg-white border-transparent'}`}>
+            <div key={index} className={`rounded-[32px] overflow-hidden transition-all duration-500 border ${theme === 'dark' ? 'bg-green-900/10 border-green-800 hover:border-neon-green/30 px-2' : 'bg-white border-green-100 shadow-sm hover:shadow-md px-2'}`}>
               <button
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
-                className={`w-full p-6 flex items-center justify-between text-left transition-colors group ${theme === 'dark' ? 'hover:bg-green-900/40' : 'hover:bg-green-50'}`}
+                className="w-full p-6 flex items-center justify-between text-left group"
               >
-                <span className={`font-bold transition-colors ${theme === 'dark' ? 'text-gray-200 group-hover:text-neon-green' : 'text-green-900 group-hover:text-neon-green'}`}>{faq.question}</span>
+                <span className={`text-lg font-black tracking-tight transition-colors ${theme === 'dark' ? 'text-gray-200 group-hover:text-neon-green' : 'text-green-900 group-hover:text-neon-green'}`}>{faq.question}</span>
                 <motion.div
                   animate={{ rotate: openIndex === index ? 180 : 0 }}
                   transition={{ duration: 0.3 }}

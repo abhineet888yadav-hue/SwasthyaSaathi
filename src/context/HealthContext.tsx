@@ -1,8 +1,4 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo, useEffect } from 'react';
-import { db, auth } from '../lib/firebase';
-import { doc, getDoc, setDoc, onSnapshot, collection, query, orderBy, limit, addDoc } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
-import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 interface HealthMetrics {
   date: string;
@@ -54,105 +50,65 @@ const defaultMetrics: HealthMetrics = {
 
 const HealthContext = createContext<HealthContextType | undefined>(undefined);
 
+const STORAGE_KEYS = {
+  METRICS: 'saathi_metrics',
+  HISTORY: 'saathi_history',
+  PROFILE: 'saathi_profile'
+};
+
 export function HealthProvider({ children }: { children: ReactNode }) {
   const [metrics, setMetrics] = useState<HealthMetrics>(defaultMetrics);
   const [history, setHistory] = useState<HealthMetrics[]>([]);
   const [profile, setProfile] = useState<UserProfile>({ goal: "General Excellence", motivation: "Balanced", studyPreference: "Interactive" });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Sync with Firestore
+  // Sync with LocalStorage
   useEffect(() => {
-    let unsubscribeHistory: () => void = () => {};
-    
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setIsLoading(true);
-        try {
-          // Fetch Profile
-          const profilePath = `users/${user.uid}`;
-          let profileDoc;
-          try {
-            profileDoc = await getDoc(doc(db, 'users', user.uid));
-          } catch (err) {
-            handleFirestoreError(err, OperationType.GET, profilePath);
-          }
+    const loadData = () => {
+      try {
+        const savedMetrics = localStorage.getItem(STORAGE_KEYS.METRICS);
+        const savedHistory = localStorage.getItem(STORAGE_KEYS.HISTORY);
+        const savedProfile = localStorage.getItem(STORAGE_KEYS.PROFILE);
 
-          if (profileDoc && profileDoc.exists()) {
-            setProfile(profileDoc.data() as UserProfile);
-          }
-
-          // Listen for History
-          const historyPath = `users/${user.uid}/history`;
-          const historyRef = collection(db, 'users', user.uid, 'history');
-          const q = query(historyRef, orderBy('date', 'desc'), limit(50));
-          
-          unsubscribeHistory = onSnapshot(q, (snapshot) => {
-            const records = snapshot.docs.map(doc => doc.data() as HealthMetrics);
-            setHistory(records);
-            if (records.length > 0) {
-              setMetrics(records[0]);
-            }
-            setIsLoading(false);
-          }, (error) => {
-            handleFirestoreError(error, OperationType.GET, historyPath);
-            setIsLoading(false);
-          });
-        } catch (err) {
-          console.error("Firestore initialization error:", err);
-          setIsLoading(false);
-        }
-      } else {
-        setHistory([defaultMetrics]);
-        setMetrics(defaultMetrics);
+        if (savedMetrics) setMetrics(JSON.parse(savedMetrics));
+        if (savedHistory) setHistory(JSON.parse(savedHistory));
+        if (savedProfile) setProfile(JSON.parse(savedProfile));
+      } catch (err) {
+        console.error("Local context initialization error:", err);
+      } finally {
         setIsLoading(false);
       }
-    });
-
-    return () => {
-      unsubscribeAuth();
-      unsubscribeHistory();
     };
+
+    loadData();
   }, []);
 
-  const updateMetrics = useCallback(async (newMetrics: Partial<HealthMetrics>) => {
+  const updateMetrics = useCallback((newMetrics: Partial<HealthMetrics>) => {
     setMetrics(prev => {
       const updated = { ...prev, ...newMetrics };
-      // If logged in, we could potentially update the latest record or wait for explicit log
+      localStorage.setItem(STORAGE_KEYS.METRICS, JSON.stringify(updated));
       return updated;
     });
   }, []);
 
-  const updateProfile = useCallback(async (newProfile: Partial<UserProfile>) => {
-    const user = auth.currentUser;
-    if (user) {
-      const updated = { ...profile, ...newProfile };
-      const profilePath = `users/${user.uid}`;
-      try {
-        await setDoc(doc(db, 'users', user.uid), updated, { merge: true });
-        setProfile(updated);
-      } catch (err) {
-        handleFirestoreError(err, OperationType.WRITE, profilePath);
-      }
-    } else {
-      setProfile(prev => ({ ...prev, ...newProfile }));
-    }
-  }, [profile]);
+  const updateProfile = useCallback((newProfile: Partial<UserProfile>) => {
+    setProfile(prev => {
+      const updated = { ...prev, ...newProfile };
+      localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
-  const addHistoryRecord = useCallback(async (record: HealthMetrics) => {
-    const user = auth.currentUser;
+  const addHistoryRecord = useCallback((record: HealthMetrics) => {
     const recordWithDate = { ...record, date: new Date().toISOString() };
+    setMetrics(recordWithDate);
+    localStorage.setItem(STORAGE_KEYS.METRICS, JSON.stringify(recordWithDate));
     
-    if (user) {
-      const historyPath = `users/${user.uid}/history`;
-      try {
-        await addDoc(collection(db, 'users', user.uid, 'history'), recordWithDate);
-      } catch (err) {
-        handleFirestoreError(err, OperationType.WRITE, historyPath);
-      }
-    } else {
-      setMetrics(recordWithDate);
-      setHistory(prev => [recordWithDate, ...prev].slice(0, 50));
-    }
+    setHistory(prev => {
+      const updatedHistory = [recordWithDate, ...prev].slice(0, 50);
+      localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updatedHistory));
+      return updatedHistory;
+    });
   }, []);
 
   const value = useMemo(() => ({ 

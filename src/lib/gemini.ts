@@ -5,15 +5,44 @@ let genAI: GoogleGenAI | null = null;
 export function getGeminiAI() {
   if (genAI) return genAI;
 
-  const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
+  // 1. Check environment variables
+  let apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+  
+  // 2. Check localStorage (User provided fallback)
+  if (!apiKey && typeof window !== 'undefined') {
+    apiKey = localStorage.getItem('SW_GEMINI_KEY') || undefined;
+  }
   
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY_MISSING");
+    const errorMsg = "Gemini API Key missing! Please set VITE_GEMINI_API_KEY in environment or provide it in settings.";
+    console.warn(errorMsg);
+    throw new Error("API_KEY_MISSING");
   }
 
-  genAI = new GoogleGenAI(apiKey);
+  genAI = new GoogleGenAI({ apiKey });
   return genAI;
 }
 
-// Keeping a safe export for backward compatibility where possible, but functions are better
-export const ai = null; // We'll move away from this static export
+/**
+ * Saves the Gemini API key to local storage for persistence across reloads.
+ */
+export function setLocalGeminiKey(key: string) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('SW_GEMINI_KEY', key);
+    // Reset the internal instance so it re-initializes with the new key
+    genAI = null;
+  }
+}
+
+/**
+ * Clears the local Gemini API key.
+ */
+export function clearLocalGeminiKey() {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('SW_GEMINI_KEY');
+    genAI = null;
+  }
+}
+
+// Functions are preferred over static exports for dynamic initialization.
+export {};

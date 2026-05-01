@@ -8,18 +8,18 @@ dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+const app = express();
+const PORT = 3000;
 
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-  // API health check
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", message: "SwasthyaSaathi Backend is Running" });
-  });
+// API health check
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", message: "SwasthyaSaathi Backend is Running" });
+});
 
+async function setupApp() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -34,7 +34,12 @@ async function startServer() {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
+}
 
+setupApp();
+
+// Only listen if not in a Vercel-like environment (Vercel uses the exported app)
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`[SwasthyaSaathi] Server is up and listening on port ${PORT}`);
     console.log(`[SwasthyaSaathi] Node Version: ${process.version}`);
@@ -42,4 +47,4 @@ async function startServer() {
   });
 }
 
-startServer();
+export default app;

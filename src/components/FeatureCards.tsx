@@ -138,7 +138,7 @@ function MiniChatCard({ feature, index }: { feature: any, index: number }) {
 
       const ai = getGeminiAI();
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-3-flash-preview",
         contents: [
           ...messages.slice(-5).map(m => ({ role: m.role, parts: [{ text: m.content }] })),
           { role: "user", parts }
@@ -163,9 +163,16 @@ End with 'Need more detail? Just ask!' only if appropriate for the flow.`
       });
 
       setMessages(prev => [...prev, { role: "model", content: response.text || "error", provider: "gemini" }]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Chat error:", error);
-      setMessages(prev => [...prev, { role: "model", content: "I encountered an error. Please try again.", provider: "system" }]);
+      const msg = error?.message || "";
+      let errorContent = "I encountered an error. Please try again.";
+      if (msg.includes("API_KEY") || msg.includes("api_key_missing")) {
+        errorContent = "⚠️ AI Key setup nahi hai. Screen ke bottom right mein 'Fix AI Key' button dhoondo aur setup kar lo!";
+      } else if (msg.includes("quota")) {
+        errorContent = "⚠️ AI Quota exceeded. Please try again later.";
+      }
+      setMessages(prev => [...prev, { role: "model", content: errorContent, provider: "system" }]);
     } finally {
       setIsLoading(false);
     }
@@ -287,21 +294,21 @@ End with 'Need more detail? Just ask!' only if appropriate for the flow.`
       <div className="absolute top-0 right-0 w-32 h-32 bg-neon-green/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-neon-green/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
       
-      <div className="flex items-center justify-between mb-4 shrink-0 relative z-10">
-        <div className="flex items-center gap-3">
-          <div className={`p-3 rounded-2xl ${feature.bg} shadow-sm group-hover:scale-110 transition-transform`}>
-            <feature.icon className={`w-6 h-6 ${feature.color}`} />
+      <div className="flex items-center justify-between mb-6 shrink-0 relative z-10">
+        <div className="flex items-center gap-4">
+          <div className={`p-3.5 rounded-2xl ${feature.bg} shadow-inner transition-transform group-hover:scale-110`}>
+            <feature.icon className={`w-7 h-7 ${feature.color}`} />
           </div>
           <div>
-            <h3 className="text-lg font-black text-green-950 tracking-tight leading-none">{feature.title}</h3>
-            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-neon-green/60">{feature.label}</span>
+            <h3 className="text-xl font-display font-black text-green-950 tracking-tight leading-none mb-1">{feature.title}</h3>
+            <span className="text-[9px] font-black uppercase tracking-[0.4em] text-neon-green">{feature.label}</span>
           </div>
         </div>
         <div className="flex items-center gap-1">
           {messages.length > 1 && (
             <button 
               onClick={clearChat}
-              className="p-2 hover:bg-red-50 text-red-400 hover:text-red-600 rounded-lg transition-colors"
+              className="p-2 hover:bg-red-50 text-red-400 hover:text-red-600 rounded-xl transition-all"
               title="Clear all chat"
             >
               <Trash2 className="w-4 h-4" />
@@ -454,7 +461,7 @@ function StudyPlanCard({ feature, index }: { feature: any, index: number }) {
     try {
       const ai = getGeminiAI();
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-3-flash-preview",
         contents: [{ role: "user", parts: [{ text: `Generate study plan for: ${topic}` }] }],
         config: {
           systemInstruction: "You are an expert academic planner. Create a highly professional, scannable study plan with realistic time slots, emoji guides, and breaks. Keep it encouraging and use natural Hinglish."
@@ -464,9 +471,10 @@ function StudyPlanCard({ feature, index }: { feature: any, index: number }) {
       setPlan(response.text || "Failed to generate plan.");
     } catch (error: any) {
       console.error("Plan generation error:", error);
-      const isKeyError = error?.message?.includes("key") || error?.message?.includes("401") || error?.message?.includes("missing");
+      const msg = error?.message || "";
+      const isKeyError = msg.includes("key") || msg.includes("401") || msg.includes("missing") || msg.includes("API_KEY");
       setPlan(isKeyError 
-        ? "⚠️ API Key is missing or invalid. Please check your Secret keys in the Settings menu."
+        ? "⚠️ AI Key setup nahi hai. Screen ke bottom right mein 'Fix AI Key' button dhoondo aur setup kar lo!"
         : "Sorry, I encountered an error with Google Studio AI generating your study plan. Please try again later.");
     } finally {
       setIsLoading(false);
@@ -485,20 +493,20 @@ function StudyPlanCard({ feature, index }: { feature: any, index: number }) {
       <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-      <div className="flex items-center justify-between mb-4 shrink-0 relative z-10">
-        <div className="flex items-center gap-3">
-          <div className={`p-3 rounded-2xl ${feature.bg} shadow-sm group-hover:scale-110 transition-transform`}>
-            <feature.icon className={`w-6 h-6 ${feature.color}`} />
+      <div className="flex items-center justify-between mb-6 shrink-0 relative z-10">
+        <div className="flex items-center gap-4">
+          <div className={`p-3.5 rounded-2xl ${feature.bg} shadow-inner transition-transform group-hover:scale-110`}>
+            <feature.icon className={`w-7 h-7 ${feature.color}`} />
           </div>
           <div>
-            <h3 className="text-lg font-black text-green-950 tracking-tight leading-none">{feature.title}</h3>
-            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-neon-green/60">{feature.label}</span>
+            <h3 className="text-xl font-display font-black text-green-950 tracking-tight leading-none mb-1">{feature.title}</h3>
+            <span className="text-[9px] font-black uppercase tracking-[0.4em] text-neon-green">{feature.label}</span>
           </div>
         </div>
         {plan && (
           <button 
             onClick={() => setPlan(null)}
-            className="p-2 hover:bg-red-50 text-red-400 hover:text-red-600 rounded-lg transition-colors"
+            className="p-2 hover:bg-red-50 text-red-400 hover:text-red-600 rounded-xl transition-all"
             title="Clear plan"
           >
             <Trash2 className="w-4 h-4" />
@@ -573,7 +581,7 @@ function RevisionCard({ feature, index }: { feature: any, index: number }) {
 
       const ai = getGeminiAI();
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-3-flash-preview",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: {
           systemInstruction: "You are a top academic coach. Provide clear revision tips and challenge questions. Use Hinglish naturally.",
@@ -587,8 +595,14 @@ function RevisionCard({ feature, index }: { feature: any, index: number }) {
         tips: parts[0].trim(),
         questions: parts[1] ? parts[1].trim() : "Question paper generation failed. Please try again."
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Revision error:", error);
+      const msg = error?.message || "";
+      if (msg.includes("API_KEY") || msg.includes("key") || msg.includes("missing")) {
+        setError("⚠️ AI Key missing. Click 'Fix AI Key' button at bottom right!");
+      } else {
+        setError("I encountered an error. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -705,17 +719,20 @@ function RevisionCard({ feature, index }: { feature: any, index: number }) {
       <div className="absolute top-0 right-0 w-32 h-32 bg-lime-600/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-lime-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-      <div className="flex items-center justify-between mb-4 shrink-0 relative z-10">
-        <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-xl ${feature.bg}`}>
-            <feature.icon className={`w-5 h-5 ${feature.color}`} />
+      <div className="flex items-center justify-between mb-6 shrink-0 relative z-10">
+        <div className="flex items-center gap-4">
+          <div className={`p-3.5 rounded-2xl ${feature.bg} shadow-inner transition-transform group-hover:scale-110`}>
+            <feature.icon className={`w-7 h-7 ${feature.color}`} />
           </div>
-          <h3 className="text-base font-bold text-green-900">{feature.title}</h3>
+          <div>
+            <h3 className="text-xl font-display font-black text-green-950 tracking-tight leading-none mb-1">{feature.title}</h3>
+            <span className="text-[9px] font-black uppercase tracking-[0.4em] text-neon-green">{feature.label}</span>
+          </div>
         </div>
         {result && (
           <button 
             onClick={() => setResult(null)}
-            className="p-2 hover:bg-red-50 text-red-400 hover:text-red-600 rounded-lg transition-colors"
+            className="p-2 hover:bg-red-50 text-red-400 hover:text-red-600 rounded-xl transition-all"
             title="Clear results"
           >
             <Trash2 className="w-4 h-4" />
@@ -856,7 +873,7 @@ function HealthCheckCard({ feature, index }: { feature: any, index: number }) {
 
       const ai = getGeminiAI();
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-3-flash-preview",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: {
           systemInstruction: "You are SwasthyaSaathi, a wise and compassionate mentor. You analyze health trends to prevent student burnout.",
@@ -1071,7 +1088,7 @@ function ChapterAnalysisCard({ feature, index }: { feature: any, index: number }
 
       const ai = getGeminiAI();
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-3-flash-preview",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: {
           systemInstruction: "You are a senior academic analyst. Break down complex chapters into simple, manageable topics using first principles. Use professional tone and Hinglish where appropriate. Response must be strictly valid JSON.",
@@ -1268,13 +1285,42 @@ function ChapterAnalysisCard({ feature, index }: { feature: any, index: number }
   );
 }
 
+import { useTheme } from "../context/ThemeContext";
+
 export default function FeatureCards() {
+  const { theme } = useTheme();
+
   return (
-    <section id="features" className="py-20 bg-green-50/30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-display font-bold mb-4 text-green-950">Powerful Features for <span className="neon-text">Smart Students</span></h2>
-          <p className="text-green-800/60 max-w-2xl mx-auto">Everything you need to excel in your studies while maintaining a healthy lifestyle.</p>
+    <section id="features" className={`py-32 relative overflow-hidden transition-colors duration-500 ${theme === 'dark' ? 'bg-[#051510]' : 'bg-green-50/50'}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="text-center mb-24">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border mb-6 text-[10px] font-black uppercase tracking-[0.3em] ${theme === 'dark' ? 'bg-green-900/40 border-green-800 text-neon-green' : 'bg-green-100 border-green-200 text-green-700'}`}
+          >
+            <Zap className="w-3 h-3 fill-current" />
+            Neural Capabilities
+          </motion.div>
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className={`text-4xl md:text-7xl font-display font-black mb-8 tracking-tighter leading-[0.9] ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}
+          >
+            Engineering <span className="neon-text italic">Student Success</span> <br /> 
+            <span className="text-xl md:text-3xl font-bold tracking-widest uppercase opacity-40">Through Neural Insights</span>
+          </motion.h2>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            viewport={{ once: true }}
+            className={`max-w-2xl mx-auto text-xl font-medium leading-relaxed ${theme === 'dark' ? 'text-gray-400' : 'text-green-800/70'}`}
+          >
+            Everything you need to master your curriculum while maintaining the cognitive agility of a top-tier performer.
+          </motion.p>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">

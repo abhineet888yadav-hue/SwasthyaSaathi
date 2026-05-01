@@ -36,23 +36,6 @@ const plans = [
     color: "text-neon-green",
     bg: "bg-green-50",
     popular: true
-  },
-  {
-    name: "Elite",
-    subtitle: "(The Achiever)",
-    price: "₹999",
-    period: "/ month",
-    description: "The ultimate edge for competitive exams and peak cognitive performance.",
-    features: [
-      "Priority 24/7 AI Access",
-      "Personalized 1-on-1 Study Path",
-      "Wearable Device Integration"
-    ],
-    buttonText: "Unlock Elite",
-    icon: Crown,
-    color: "text-purple-500",
-    bg: "bg-purple-50",
-    popular: false
   }
 ];
 
@@ -100,70 +83,64 @@ export default function Pricing() {
           </motion.p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch max-w-5xl mx-auto">
           {plans.map((plan, index) => (
             <motion.div
               key={index}
-              initial={{ opacity: 0, scale: 0.9, y: 30 }}
-              whileInView={{ opacity: 1, scale: 1, y: 0 }}
-              whileHover={{ y: -10 }}
-              transition={{ 
-                delay: index * 0.1,
-                scale: { type: "spring", stiffness: 300, damping: 25 }
-              }}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
               viewport={{ once: true }}
-              className={`flex flex-col p-8 rounded-[40px] border relative overflow-hidden transition-all duration-300 ${
+              className={`flex flex-col p-8 rounded-[40px] border relative transition-all duration-500 overflow-hidden group ${
                 plan.popular 
-                  ? theme === 'dark' ? 'bg-green-900/20 border-neon-green/50 shadow-2xl shadow-neon-green/10' : 'bg-white border-neon-green shadow-xl shadow-neon-green/10 ring-4 ring-neon-green/5' 
-                  : theme === 'dark' ? 'bg-green-950/20 border-green-900 hover:border-green-800' : 'bg-white border-green-50 shadow-sm hover:border-green-200'
+                  ? theme === 'dark' ? 'bg-green-900/10 border-neon-green/30 shadow-2xl shadow-neon-green/5' : 'bg-white border-neon-green/30 shadow-xl shadow-neon-green/10 ring-1 ring-neon-green/10' 
+                  : theme === 'dark' ? 'bg-green-950/10 border-green-900/50' : 'bg-white border-green-100 shadow-sm'
               }`}
             >
+              <div className="absolute inset-0 bg-gradient-to-br from-neon-green/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              
               {plan.popular && (
-                <div className="absolute top-0 right-0">
-                  <div className="bg-neon-green text-white text-[10px] font-black uppercase tracking-[0.2em] px-8 py-2 rotate-45 translate-x-[28%] translate-y-[28%] shadow-lg">
-                    Popular
-                  </div>
+                <div className={`absolute top-6 right-6 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.2em] ${theme === 'dark' ? 'bg-neon-green text-green-950' : 'bg-neon-green text-white shadow-lg shadow-neon-green/20'}`}>
+                  Most Popular
                 </div>
               )}
 
-              <div className="mb-8">
-                <div className={`p-4 rounded-2xl inline-flex mb-6 ${theme === 'dark' ? 'bg-green-900/40' : plan.bg} ${plan.color}`}>
+              <div className="mb-8 relative z-10">
+                <div className={`p-4 rounded-2xl inline-flex mb-6 ${theme === 'dark' ? 'bg-green-900/20' : plan.bg} ${plan.color} shadow-inner`}>
                   <plan.icon className="w-8 h-8" />
                 </div>
                 <h3 className={`text-2xl font-display font-black leading-none mb-1 ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>
                   {plan.name}
                 </h3>
-                <p className={`text-xs font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-green-400' : 'text-green-700'}`}>
+                <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${theme === 'dark' ? 'text-neon-green/60' : 'text-green-700/60'}`}>
                   {plan.subtitle}
                 </p>
               </div>
 
-              <div className="mb-8">
+              <div className="mb-8 relative z-10">
                 <div className="flex items-baseline gap-1">
                   <span className={`text-5xl font-black tracking-tighter ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>{plan.price}</span>
-                  <span className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-500' : 'text-green-800/40'}`}>{plan.period}</span>
+                  <span className={`text-xs font-black uppercase tracking-widest ${theme === 'dark' ? 'text-gray-500/60' : 'text-green-800/30'}`}>{plan.period}</span>
                 </div>
                 <p className={`mt-4 text-sm font-medium leading-relaxed ${theme === 'dark' ? 'text-gray-400' : 'text-green-800/60'}`}>
                   {plan.description}
                 </p>
               </div>
 
-              <div className="space-y-4 mb-10 flex-1">
+              <div className="space-y-4 mb-10 flex-1 relative z-10 text-[13px]">
                 {plan.features.map((feature, fIndex) => (
                   <div key={fIndex} className="flex items-center gap-3">
-                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-neon-green/10 flex items-center justify-center">
-                      <Check className="w-3.5 h-3.5 text-neon-green" />
-                    </div>
-                    <span className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-green-900/80'}`}>{feature}</span>
+                    <Check className="w-4 h-4 text-neon-green shrink-0" />
+                    <span className={`font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-green-900/80'}`}>{feature}</span>
                   </div>
                 ))}
               </div>
 
               <button 
-                className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-all duration-300 active:scale-95 ${
+                className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all duration-300 active:scale-95 relative z-10 border-2 ${
                   plan.popular 
-                    ? 'bg-neon-green text-white shadow-xl shadow-neon-green/20 hover:brightness-110' 
-                    : theme === 'dark' ? 'bg-green-900/40 text-white border-2 border-green-800 hover:border-neon-green' : 'bg-green-50 text-green-900 border-2 border-green-100 hover:border-neon-green'
+                    ? 'bg-neon-green text-white border-neon-green shadow-xl shadow-neon-green/20 hover:brightness-110' 
+                    : theme === 'dark' ? 'bg-transparent text-white border-green-800/50 hover:border-neon-green' : 'bg-transparent text-green-900 border-green-100 hover:border-neon-green'
                 }`}
               >
                 {plan.buttonText}
@@ -172,14 +149,16 @@ export default function Pricing() {
           ))}
         </div>
 
+
+
         <motion.div 
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="mt-16 text-center"
+          className="mt-20 text-center"
         >
-          <p className={`text-xs font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-gray-500' : 'text-green-800/30'}`}>
-            All plans include core AI ethical safeguards & state-of-the-art encryption.
+          <p className={`text-[10px] font-black uppercase tracking-[0.4em] ${theme === 'dark' ? 'text-gray-500/40' : 'text-green-800/20'}`}>
+            Secure Neural Network • HIPAA Compliant • ISO Certified
           </p>
         </motion.div>
       </div>

@@ -1,6 +1,13 @@
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useScroll, useSpring } from "motion/react";
 import { Moon, Sun, BookOpen, AlertTriangle, RefreshCw, CheckCircle2, Play, Pause, RotateCcw, X, Sparkles, Zap, Activity, Trash2, Plus, ChevronRight, Settings } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { 
+  fadeInUp, 
+  staggerContainer, 
+  hover3D, 
+  buttonPress, 
+  springConfig 
+} from "../lib/animations";
 
 interface Stat {
   label: string;
@@ -20,8 +27,8 @@ interface Task {
 }
 
 import { useHealth } from "../context/HealthContext";
-import { onAuthStateChanged } from "firebase/auth";
 import { getGeminiAI } from "../lib/gemini";
+import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../lib/firebase";
 
 import { useTheme } from "../context/ThemeContext";
@@ -34,6 +41,14 @@ export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
+  
+  // Scroll progress logic
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001
+  });
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -145,16 +160,21 @@ export default function Dashboard() {
         const parsed = JSON.parse(response.text.trim());
         updateMetrics(parsed);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to fetch node analysis:", err);
+      
+      const isKeyMissing = err.message === "API_KEY_MISSING";
+      
       // Fallback
       updateMetrics({
-        sleepProgress: Math.min(100, Math.max(0, metrics.sleepProgress + (Math.random() - 0.5) * 5)),
-        studyProgress: Math.min(100, Math.max(0, metrics.studyProgress + (Math.random() - 0.5) * 5)),
-        moodProgress: Math.min(100, Math.max(0, metrics.moodProgress + (Math.random() - 0.5) * 5)),
+        ...metrics,
         status: "At Risk",
-        healthTip: "Lagta hai network issue hai, but don't worry, keep analyzing internally!",
-        recommendations: ["Check internet connection", "Take a short manual break"]
+        healthTip: isKeyMissing 
+          ? "Oho! AI Key setup nahi hai. Screen ke bottom right mein 'Fix AI Key' button dhoondo aur setup kar lo!" 
+          : "Lagta hai network issue hai, but don't worry, keep analyzing internally!",
+        recommendations: isKeyMissing 
+          ? ["Add Gemini API Key", "Click the Fix AI Key button"]
+          : ["Check internet connection", "Take a short manual break"]
       });
     } finally {
       setIsRefreshing(false);
@@ -262,7 +282,14 @@ No markdown, just raw JSON.`;
   } : null;
 
   return (
-    <section id="dashboard" className={`py-20 relative transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0a201a]' : 'bg-white'}`}>
+    <>
+    <section id="dashboard" className={`py-20 relative transition-colors duration-500 overflow-hidden ${theme === 'dark' ? 'bg-[#0a201a]' : 'bg-white'}`}>
+      {/* Scroll Progress Indicator */}
+      <motion.div
+        className="fixed top-0 left-0 right-0 h-1 bg-neon-green z-[150] origin-left"
+        style={{ scaleX }}
+      />
+      
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-[0.03] z-0 overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full" style={{ backgroundImage: 'radial-gradient(#39FF14 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
         <div className={`absolute top-[20%] left-[10%] w-[500px] h-[500px] rounded-full blur-[120px] ${theme === 'dark' ? 'bg-neon-green' : 'bg-green-200'}`} />
@@ -338,7 +365,13 @@ No markdown, just raw JSON.`;
         </div>
       </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <motion.div 
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 perspective-1000"
+        >
           {isRefreshing ? (
             <>
               <StatSkeleton />
@@ -350,15 +383,10 @@ No markdown, just raw JSON.`;
             stats.map((stat, index) => (
               <motion.div
                 key={index}
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                whileInView={{ opacity: 1, scale: 1, y: 0 }}
-                whileHover={{ y: -5, scale: 1.02 }}
+                variants={fadeInUp}
+                whileHover={hover3D.whileHover}
+                whileTap={hover3D.whileTap}
                 onClick={() => setSelectedHistory(stat.label)}
-                transition={{ 
-                  delay: index * 0.1,
-                  scale: { type: "spring", stiffness: 300, damping: 20 }
-                }}
-                viewport={{ once: true }}
                 className={`p-6 rounded-3xl shadow-sm border cursor-pointer transition-all ${theme === 'dark' ? 'bg-green-950/20 border-green-900 group' : 'glass bg-white border-green-50'}`}
               >
                 <div className="flex items-center justify-between mb-4">
@@ -386,153 +414,182 @@ No markdown, just raw JSON.`;
               </motion.div>
             ))
           )}
-        </div>
+        </motion.div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          <div className={`p-8 rounded-3xl border relative overflow-hidden transition-all ${theme === 'dark' ? 'bg-green-950/20 border-green-900' : 'glass bg-white border-green-50'}`}>
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-neon-green/40 via-transparent to-transparent" />
-            
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4 relative z-10">
-              <h3 className={`text-xl font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>
-                <BookOpen className="w-5 h-5 text-neon-green" />
-                Daily Habits & Tasks
-              </h3>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
+        <motion.div 
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          className="grid lg:grid-cols-3 gap-8"
+        >
+          <motion.div 
+            variants={fadeInUp}
+            className="lg:col-span-2 h-full"
+          >
+            <div className={`p-10 rounded-[48px] border relative overflow-hidden group transition-all duration-500 h-full ${theme === 'dark' ? 'bg-[#0a201a]/60 border-green-900/50' : 'bg-white/80 border-green-100 shadow-2xl shadow-green-100/10'} backdrop-blur-xl`}>
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-neon-green/40 via-transparent to-transparent" />
+              <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-neon-green/5 rounded-full blur-[100px] pointer-events-none" />
+              
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-10 gap-6 relative z-10">
+                <div>
+                  <h3 className={`text-2xl font-display font-black flex items-center gap-3 ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>
+                    <div className="p-2 bg-neon-green/20 rounded-xl">
+                      <BookOpen className="w-5 h-5 text-neon-green" />
+                    </div>
+                    Daily Habits & Tasks
+                  </h3>
+                  <p className={`text-[10px] font-black uppercase tracking-[0.4em] text-neon-green/60 ml-12 mt-1`}>Cognitive Schedule</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
                   <button 
                     onClick={neuralSyncTasks}
                     disabled={isRefreshing}
-                    className="h-9 text-[10px] font-black text-neon-green border border-neon-green/30 px-4 rounded-full uppercase tracking-widest hover:bg-neon-green/10 transition-all flex items-center gap-2 shadow-sm"
+                    className="h-11 text-[10px] font-black text-neon-green border-2 border-neon-green/30 px-6 rounded-2xl uppercase tracking-widest hover:bg-neon-green/10 transition-all flex items-center gap-2 shadow-sm active:scale-95"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                     Neural Sync
                   </button>
-                  <button 
-                    onClick={() => setTasks([])}
-                    className="w-9 h-9 flex items-center justify-center aspect-square text-red-400 hover:text-red-600 hover:bg-red-50/50 transition-all rounded-full border border-red-400/20 shadow-sm"
-                    title="Clear All"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="relative w-64 hidden sm:block">
-                  <input 
-                    type="text" 
-                    value={studyTopic}
-                    onChange={(e) => setStudyTopic(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && generateStudyTasks()}
-                    placeholder="Add a new study task..."
-                    className={`w-full border rounded-full py-2.5 px-4 text-xs focus:outline-none focus:border-neon-green transition-colors pr-12 shadow-inner ${theme === 'dark' ? 'bg-green-950/40 border-green-900 text-white' : 'bg-green-50/40 border-green-100 text-green-950'}`}
-                  />
-                  <button 
-                    onClick={generateStudyTasks}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-neon-green text-white rounded-full hover:scale-105 active:scale-95 transition-all shadow-sm"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
+                  <div className="relative group/input hidden sm:block">
+                    <input 
+                      type="text" 
+                      value={studyTopic}
+                      onChange={(e) => setStudyTopic(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && generateStudyTasks()}
+                      placeholder="New neural task..."
+                      className={`w-56 border-2 rounded-2xl py-3 px-5 text-xs font-bold focus:outline-none focus:border-neon-green/50 transition-all pr-12 shadow-inner ${theme === 'dark' ? 'bg-green-950/60 border-green-900/50 text-white' : 'bg-green-50/50 border-green-100 text-green-950'}`}
+                    />
+                    <button 
+                      onClick={generateStudyTasks}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-neon-green text-green-900 rounded-xl hover:scale-110 active:scale-90 transition-all shadow-lg shadow-neon-green/20"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="space-y-4">
-              <AnimatePresence mode="popLayout">
-                {tasks.map((item) => (
-                  <motion.div 
-                    key={item.id} 
-                    layout
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    onClick={() => toggleTask(item.id)}
-                    className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer group ${
-                      item.status === "Completed" 
-                        ? theme === 'dark' ? "bg-green-950/40 border-green-900 opacity-60" : "bg-green-50/30 border-green-100 opacity-60" 
-                        : theme === 'dark' ? "bg-green-900/10 border-green-900 hover:border-neon-green/30" : "bg-green-50/50 border-green-100 hover:border-neon-green/30"
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
-                        item.status === "Completed" ? "bg-neon-green border-neon-green" : theme === 'dark' ? "border-green-800" : "border-green-200 group-hover:border-neon-green"
-                      }`}>
-                        {item.status === "Completed" && <CheckCircle2 className="w-4 h-4 text-white" />}
-                      </div>
-                      <div>
-                        <div className={`font-bold transition-all ${item.status === "Completed" ? (theme === 'dark' ? "text-green-400/50 line-through" : "text-green-800/50 line-through") : (theme === 'dark' ? "text-white" : "text-green-900")}`}>
-                          {item.task}
+              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-neon-green/20">
+                <AnimatePresence mode="popLayout">
+                  {tasks.length > 0 ? tasks.map((item) => (
+                    <motion.div 
+                      key={item.id} 
+                      layout
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      onClick={() => toggleTask(item.id)}
+                      className={`flex items-center justify-between p-6 rounded-[32px] border transition-all cursor-pointer group ${
+                        item.status === "Completed" 
+                          ? theme === 'dark' ? "bg-green-950/20 border-green-900/30 opacity-60" : "bg-green-50/20 border-green-0/50 opacity-60" 
+                          : theme === 'dark' ? "bg-green-900/10 border-green-800 hover:border-neon-green/40 hover:bg-green-900/20" : "bg-white border-green-100 shadow-sm hover:shadow-xl hover:shadow-green-100/20 hover:border-neon-green/30"
+                      }`}
+                    >
+                      <div className="flex items-center gap-6">
+                        <div className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center transition-all duration-500 transform group-hover:rotate-12 ${
+                          item.status === "Completed" ? "bg-neon-green border-neon-green shadow-lg shadow-neon-green/20" : theme === 'dark' ? "border-green-800 bg-green-950/50" : "border-green-100 bg-white group-hover:border-neon-green/50"
+                        }`}>
+                          {item.status === "Completed" ? <CheckCircle2 className="w-6 h-6 text-green-900" /> : <div className="w-2 h-2 rounded-full bg-green-300 opacity-20 group-hover:opacity-100 transition-opacity" />}
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-green-800/60'}`}>{item.time}</div>
-                          {item.energy && (
-                            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border ${
-                              item.energy <= 3 ? "bg-green-50 border-green-100 text-green-600" :
-                              item.energy <= 7 ? "bg-yellow-50 border-yellow-100 text-yellow-600" :
-                              "bg-red-50 border-red-100 text-red-600"
-                            }`}>
-                              <Zap className="w-2.5 h-2.5 fill-current" />
-                              <span className="text-[9px] font-bold uppercase tracking-wider">Energy: {item.energy}</span>
-                            </div>
-                          )}
+                        <div>
+                          <div className={`text-base font-black transition-all ${item.status === "Completed" ? (theme === 'dark' ? "text-green-400/50 line-through" : "text-green-800/50 line-through") : (theme === 'dark' ? "text-white" : "text-green-950")}`}>
+                            {item.task}
+                          </div>
+                          <div className="flex items-center gap-4 mt-1">
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${theme === 'dark' ? 'text-gray-500' : 'text-green-800/40'}`}>{item.time}</span>
+                            {item.energy && (
+                              <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border-2 ${
+                                item.energy <= 3 ? "bg-green-500/10 border-green-500/20 text-green-500" :
+                                item.energy <= 7 ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-500" :
+                                "bg-red-500/10 border-red-500/20 text-red-500"
+                              }`}>
+                                <Zap className="w-2.5 h-2.5 fill-current" />
+                                <span className="text-[8px] font-black uppercase tracking-widest">Load: {item.energy}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={(e) => deleteTask(e, item.id)}
+                          className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all ${theme === 'dark' ? 'text-red-400/30 hover:text-red-400 hover:bg-red-400/10' : 'text-red-200 hover:text-red-500 hover:bg-red-50 shadow-sm'}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </motion.div>
+                  )) : (
+                    <div className={`text-center py-24 rounded-[40px] border-2 border-dashed ${theme === 'dark' ? 'border-green-900/50' : 'border-green-100'}`}>
+                      <p className={`text-sm font-bold italic ${theme === 'dark' ? 'text-green-800/40' : 'text-green-800/20'}`}>No active tasks. <br /> Use Neural Sync to generate a path.</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-                        item.status === "Completed" ? "bg-green-200 text-green-800" : (theme === 'dark' ? "bg-green-800/40 text-green-200" : "bg-green-100 text-green-800")
-                      }`}>
-                        {item.status}
-                      </span>
-                      <button 
-                        onClick={(e) => deleteTask(e, item.id)}
-                        className={`shrink-0 w-8 h-8 flex items-center justify-center aspect-square rounded-xl transition-all ${theme === 'dark' ? 'text-red-400 hover:bg-red-900/20' : 'text-red-400 hover:text-red-600 hover:bg-red-50'}`}
-                        title="Delete task"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
-          </div>
-
-          <div className="flex flex-col gap-8">
-            <div className={`p-8 rounded-3xl border relative overflow-hidden group min-h-[400px] transition-all flex flex-col ${theme === 'dark' ? 'bg-green-950/20 border-green-900 bg-gradient-to-br from-neon-green/5 to-transparent' : 'glass bg-gradient-to-br from-neon-green/5 to-transparent border-green-100'}`}>
-               <div className="absolute top-0 right-0 w-48 h-48 bg-neon-green/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
-               <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-neon-green/5 rounded-full blur-3xl pointer-events-none" />
+          </motion.div>
+          <motion.div 
+              variants={fadeInUp}
+              className="flex flex-col gap-8"
+            >
+              <div className={`p-8 rounded-[40px] border relative overflow-hidden group min-h-[500px] transition-all flex flex-col ${theme === 'dark' ? 'bg-[#0a201a]/80 border-green-900/50' : 'bg-white/80 border-green-100 shadow-2xl shadow-green-100/20'} backdrop-blur-2xl`}>
+               {/* Animated Neural Mesh Background */}
+               <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
+                 <div className="absolute top-0 right-0 w-80 h-80 bg-neon-green rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 animate-pulse" />
+                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2 opacity-30" />
+                 <div className={`absolute inset-0 ${theme === 'dark' ? 'opacity-10' : 'opacity-5'}`} style={{ backgroundImage: 'radial-gradient(#39FF14 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+               </div>
                
-               <div className="text-center z-10 w-full flex-1 flex flex-col relative">
-                 <div className="flex items-center justify-between mb-8">
+               <div className="z-10 w-full flex-1 flex flex-col relative">
+                 <div className="flex items-center justify-between mb-10">
                    <div className="flex flex-col items-start">
-                     <h3 className={`text-2xl font-display font-bold flex items-center gap-3 ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>
-                       <Sun className="w-6 h-6 text-yellow-500 animate-pulse" />
-                       Node Analysis
-                     </h3>
-                     <span className="text-[10px] font-black uppercase tracking-[0.3em] text-neon-green ml-9">Operational Status</span>
+                     <div className="flex items-center gap-3 mb-1">
+                        <div className="p-2 bg-neon-green/20 rounded-xl">
+                          <Activity className="w-5 h-5 text-neon-green" />
+                        </div>
+                        <h3 className={`text-2xl font-display font-black tracking-tight ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>
+                          Node Analysis
+                        </h3>
+                     </div>
+                     <span className="text-[10px] font-black uppercase tracking-[0.4em] text-neon-green/60 ml-1">Real-time Cognitive Sync</span>
                    </div>
-                   <div className={`px-5 py-2 rounded-xl text-[10px] font-black tracking-widest uppercase border-2 shadow-sm ${
-                     metrics.status === "Safe" ? "bg-green-100 border-green-200 text-green-800" :
-                     metrics.status === "At Risk" ? "bg-yellow-100 border-yellow-200 text-yellow-800" :
-                     "bg-red-100 border-red-200 text-red-800"
-                   }`}>
+                   <motion.div 
+                     animate={{ 
+                       scale: [1, 1.05, 1],
+                       boxShadow: metrics.status === "Safe" ? ["0 0 0px #39FF14", "0 0 15px #39FF14", "0 0 0px #39FF14"] : []
+                     }}
+                     transition={{ duration: 2, repeat: Infinity }}
+                     className={`px-5 py-2 rounded-2xl text-[10px] font-black tracking-widest uppercase border-2 ${
+                       metrics.status === "Safe" ? "bg-green-100/50 border-green-400/50 text-green-800 shadow-neon-green/20" :
+                       metrics.status === "At Risk" ? "bg-yellow-100/50 border-yellow-400/50 text-yellow-800 shadow-yellow-400/20" :
+                       "bg-red-100/50 border-red-400/50 text-red-800 shadow-red-400/20"
+                     }`}
+                   >
                      {metrics.status}
-                   </div>
+                   </motion.div>
                  </div>
 
-                 <div className="space-y-6 flex-1 flex flex-col">
+                 <div className="space-y-8 flex-1 flex flex-col">
                    <motion.div 
-                     whileHover={{ x: 5 }}
-                     className={`p-6 rounded-[32px] border shadow-inner text-left transition-all ${theme === 'dark' ? 'bg-green-950/60 border-green-900' : 'bg-white/60 border-green-100'}`}
+                     whileHover={{ y: -5 }}
+                     className={`p-6 rounded-[32px] border relative overflow-hidden transition-all ${theme === 'dark' ? 'bg-green-950/40 border-green-800/50 shadow-inner' : 'bg-white border-green-100 shadow-xl shadow-green-100/10'}`}
                    >
-                     <span className={`text-[9px] font-black uppercase tracking-[0.2em] block mb-3 ${theme === 'dark' ? 'text-neon-green' : 'text-green-800'}`}>Neural Insight</span>
-                     <p className={`text-base font-medium italic leading-relaxed ${theme === 'dark' ? 'text-gray-200' : 'text-green-950'}`}>&ldquo;{metrics.healthTip}&rdquo;</p>
+                     <div className="absolute top-0 right-0 p-4">
+                       <Sparkles className="w-4 h-4 text-neon-green opacity-40" />
+                     </div>
+                     <span className={`text-[9px] font-black uppercase tracking-[0.3em] block mb-4 ${theme === 'dark' ? 'text-neon-green/80' : 'text-green-700'}`}>Neural Insight</span>
+                     <p className={`text-lg font-bold leading-relaxed tracking-tight ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>&ldquo;{metrics.healthTip}&rdquo;</p>
                    </motion.div>
 
-                   <div className="flex-1 space-y-4 text-left">
-                     <div className="flex items-center justify-between mb-2">
-                       <span className={`text-[10px] font-black uppercase tracking-[0.2em] pl-1 ${theme === 'dark' ? 'text-green-400/60' : 'text-green-800/40'}`}>Optimization Queue</span>
-                       <div className="h-px bg-neon-green/20 flex-1 ml-4" />
+                   <div className="flex-1 space-y-5">
+                     <div className="flex items-center justify-between mb-2 px-2">
+                       <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${theme === 'dark' ? 'text-gray-500' : 'text-green-800/40'}`}>Optimization Queue</span>
+                       <div className="flex gap-1">
+                         {[1,2,3].map(i => <div key={i} className="w-1 h-1 bg-neon-green/30 rounded-full" />)}
+                       </div>
                      </div>
-                     <div className="space-y-3">
+                     <div className="space-y-4">
                        {metrics.recommendations.length > 0 ? (
                          metrics.recommendations.map((rec, i) => (
                            <motion.div 
@@ -540,47 +597,52 @@ No markdown, just raw JSON.`;
                              animate={{ opacity: 1, x: 0 }}
                              transition={{ delay: i * 0.1 }}
                              key={i} 
-                             className={`flex gap-4 text-sm p-4 rounded-2xl border hover:border-neon-green/50 hover:bg-neon-green/5 transition-all group/rec ${theme === 'dark' ? 'bg-green-900/5 text-gray-300 border-green-900' : 'text-green-950 bg-green-50/30 border-green-100'}`}
+                             className={`flex items-start gap-4 p-5 rounded-[24px] border group/rec transition-all duration-300 ${theme === 'dark' ? 'bg-green-900/10 border-green-900/50 text-gray-300 hover:bg-green-900/20 hover:border-neon-green/30' : 'bg-green-50/30 border-green-100 text-green-950 hover:bg-white hover:border-neon-green/30 hover:shadow-lg hover:shadow-neon-green/5'}`}
                            >
-                             <div className="w-2 h-2 bg-neon-green rounded-full mt-1.5 shrink-0 group-hover/rec:scale-125 transition-transform shadow-[0_0_10px_#39FF14]" />
-                             <span className="flex-1 font-bold tracking-tight leading-snug">{rec}</span>
+                             <div className="w-5 h-5 bg-neon-green/10 rounded-lg flex items-center justify-center shrink-0 mt-0.5 border border-neon-green/20 group-hover/rec:bg-neon-green/20 transition-colors">
+                               <CheckCircle2 className="w-3 h-3 text-neon-green" />
+                             </div>
+                             <span className="flex-1 font-bold tracking-tight leading-snug text-sm">{rec}</span>
+                             <ChevronRight className="w-4 h-4 text-neon-green/0 group-hover/rec:text-neon-green/100 transition-all -translate-x-2 group-hover/rec:translate-x-0" />
                            </motion.div>
                          ))
                        ) : (
-                         <div className={`text-center py-10 text-sm italic ${theme === 'dark' ? 'text-green-800/60' : 'text-green-800/30'}`}>
-                           System Idle. Complete regular check-ins for neural mapping.
+                         <div className={`text-center py-16 rounded-[32px] border-2 border-dashed ${theme === 'dark' ? 'border-green-900/50 text-green-800/60' : 'border-green-100 text-green-800/30'}`}>
+                           <p className="italic font-bold text-sm">System Idle. <br /> Awaiting neural dataset.</p>
                          </div>
                        )}
                      </div>
                    </div>
 
-                   <div className={`pt-6 border-t ${theme === 'dark' ? 'border-green-900' : 'border-green-100'}`}>
+                   <div className="pt-8 space-y-4">
+                     <div className="flex gap-4">
+                       <motion.button 
+                         whileHover={{ scale: 1.02 }}
+                         whileTap={{ scale: 0.98 }}
+                         onClick={handleRefresh}
+                         className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border-2 ${theme === 'dark' ? 'bg-green-900/30 border-neon-green/50 text-neon-green hover:bg-neon-green/10' : 'bg-white border-neon-green/20 text-neon-green hover:bg-neon-green/5 hover:border-neon-green/40 shadow-sm'}`}
+                       >
+                         <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                         {isRefreshing ? 'Syncing...' : 'Scan'}
+                       </motion.button>
+                       <motion.button 
+                         whileHover={{ scale: 1.02 }}
+                         whileTap={{ scale: 0.98 }}
+                         onClick={() => addHistoryRecord(metrics)}
+                         className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border-2 ${theme === 'dark' ? 'bg-blue-900/30 border-blue-500/50 text-blue-400 hover:bg-blue-500/10' : 'bg-white border-blue-500/20 text-blue-500 hover:bg-blue-500/5 hover:border-blue-500/40 shadow-sm'}`}
+                       >
+                         <Activity className="w-4 h-4" />
+                         Log Node
+                       </motion.button>
+                     </div>
                      <motion.button 
-                       whileHover={{ scale: 1.02 }}
-                       whileTap={{ scale: 0.98 }}
-                       onClick={handleRefresh}
-                       className="flex-1 py-5 bg-neon-green/10 text-neon-green border-2 border-neon-green rounded-[24px] font-black uppercase tracking-widest hover:bg-neon-green/20 transition-all flex items-center justify-center gap-4 group/scan"
+                       whileHover={{ scale: 1.01, filter: "brightness(1.1)" }}
+                       whileTap={{ scale: 0.99 }}
+                       onClick={() => setShowMeditation(true)}
+                       className="w-full py-5 bg-neon-green text-green-900 rounded-[28px] font-black uppercase tracking-[0.2em] text-xs transition-all shadow-xl shadow-neon-green/30 flex items-center justify-center gap-4 group/zen"
                      >
-                       <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                       Scan
-                     </motion.button>
-                     <motion.button 
-                       whileHover={{ scale: 1.02 }}
-                       whileTap={{ scale: 0.98 }}
-                       onClick={() => addHistoryRecord(metrics)}
-                       className="flex-1 py-5 bg-blue-500/10 text-blue-400 border-2 border-blue-500/50 rounded-[24px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all flex items-center justify-center gap-4"
-                     >
-                       <Activity className="w-5 h-5" />
-                       Log
-                     </motion.button>
-                     <motion.button 
-                     whileHover={{ scale: 1.02 }}
-                     whileTap={{ scale: 0.98 }}
-                     onClick={() => setShowMeditation(true)}
-                       className="w-full py-5 bg-neon-green text-white rounded-[24px] font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-[0_10px_30px_-10px_rgba(57,255,20,0.3)] flex items-center justify-center gap-4 group/zen"
-                     >
-                       <div className="p-1 bg-white/20 rounded-lg group-hover/zen:rotate-12 transition-transform">
-                         <Play className="w-5 h-5 fill-current" />
+                       <div className="p-1.5 bg-white/30 rounded-xl group-hover/zen:scale-110 group-hover/zen:rotate-12 transition-transform">
+                         <Zap className="w-4 h-4 fill-current" />
                        </div>
                        Initiate Zen Protocol
                      </motion.button>
@@ -588,69 +650,81 @@ No markdown, just raw JSON.`;
                  </div>
                </div>
              </div>
+            </motion.div>
+          <motion.div 
+            variants={fadeInUp}
+            className="flex flex-col gap-8"
+          >
 
-            <div className={`p-6 rounded-3xl border shadow-sm hover:shadow-md transition-all ${theme === 'dark' ? 'bg-green-950/20 border-green-900' : 'glass bg-white border-green-50'}`}>
-              <div className="flex items-center justify-between mb-6">
-                <h4 className={`text-sm font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>
-                  <Activity className="w-4 h-4 text-neon-green" />
-                  Comprehensive Health Journal
-                </h4>
+
+            <div className={`p-10 rounded-[48px] border shadow-2xl transition-all backdrop-blur-xl ${theme === 'dark' ? 'bg-[#0a201a]/40 border-green-900/50 hover:border-neon-green/30 shadow-black' : 'bg-white border-green-100 hover:shadow-neon-green/5 shadow-green-100/20'}`}>
+              <div className="flex items-center justify-between mb-10 text-left">
+                <div className="flex flex-col">
+                  <h4 className={`text-xl font-display font-black flex items-center gap-3 tracking-tight ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>
+                    <div className="p-2 bg-blue-500/10 rounded-xl">
+                      <Activity className="w-5 h-5 text-blue-400" />
+                    </div>
+                    Health Journal
+                  </h4>
+                  <span className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-400/60 ml-12 mt-1">30-Day Analysis</span>
+                </div>
                 <button 
                   onClick={() => setShowFullHistory(true)}
-                  className="text-[10px] font-bold text-neon-green uppercase tracking-widest hover:underline"
+                  className="px-6 py-3 rounded-2xl text-[10px] font-black text-neon-green uppercase tracking-widest border-2 border-neon-green/20 hover:bg-neon-green/10 transition-all active:scale-95"
                 >
-                  View History
+                  History
                 </button>
               </div>
-              <div className="space-y-4">
+              
+              <div className="space-y-5">
                 {history.slice(0, 3).map((record, i) => (
                   <motion.div 
                     key={i} 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
-                    className={`p-4 rounded-2xl border transition-all group ${theme === 'dark' ? 'bg-green-900/5 border-green-900 hover:border-neon-green/30' : 'bg-green-50/20 border-green-50 hover:border-neon-green/30'}`}
+                    className={`p-6 rounded-[32px] border transition-all duration-300 group hover:-translate-y-1 ${theme === 'dark' ? 'bg-green-900/5 border-green-800/40 hover:border-blue-500/50' : 'bg-white border-green-100 hover:border-blue-200 shadow-sm hover:shadow-lg'}`}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className={`text-[10px] font-bold uppercase tracking-tighter ${theme === 'dark' ? 'text-green-400' : 'text-green-800/40'}`}>
+                    <div className="flex items-center justify-between mb-6 text-left">
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${theme === 'dark' ? 'text-blue-400' : 'text-blue-800/40'}`}>
                         {new Date(record.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                       </span>
-                      <div className={`text-[8px] font-black px-2 py-0.5 rounded-full border ${
-                        record.status === "Safe" ? "bg-green-50 border-green-200 text-green-700" : 
-                        record.status === "At Risk" ? "bg-yellow-50 border-yellow-200 text-yellow-700" :
-                        "bg-red-50 border-red-200 text-red-700"
+                      <div className={`text-[8px] font-black px-3 py-1 rounded-full border-2 ${
+                        record.status === "Safe" ? "bg-green-100/50 border-green-400/50 text-green-800" : 
+                        record.status === "At Risk" ? "bg-yellow-100/50 border-yellow-400/50 text-yellow-700" :
+                        "bg-red-100/50 border-red-400/50 text-red-700"
                       }`}>
                         {record.status}
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-y-2 gap-x-4">
-                      <div className="flex items-center gap-2">
-                        <Moon className="w-3 h-3 text-blue-500" />
-                        <span className={`text-[10px] font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-green-900'}`}>{record.sleepHours}</span>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className={`flex flex-col gap-1.5 p-4 rounded-2xl ${theme === 'dark' ? 'bg-green-950/40' : 'bg-green-50/50'}`}>
+                        <div className="flex items-center gap-2">
+                           <Moon className="w-3.5 h-3.5 text-blue-500" />
+                           <span className={`text-[10px] font-black uppercase tracking-widest ${theme === 'dark' ? 'text-gray-500' : 'text-green-800/40'}`}>Sleep</span>
+                        </div>
+                        <span className={`text-base font-black ${theme === 'dark' ? 'text-white' : 'text-green-900'}`}>{record.sleepHours}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Sun className="w-3 h-3 text-yellow-500" />
-                        <span className={`text-[10px] font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-green-900'}`}>{record.mood}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <BookOpen className="w-3 h-3 text-emerald-500" />
-                        <span className={`text-[10px] font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-green-900'}`}>{record.studyHours}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="w-3 h-3 text-neon-green" />
-                        <span className={`text-[10px] font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-green-900'}`}>{record.burnoutRisk}</span>
+                      <div className={`flex flex-col gap-1.5 p-4 rounded-2xl ${theme === 'dark' ? 'bg-green-950/40' : 'bg-green-50/50'}`}>
+                        <div className="flex items-center gap-2">
+                           <Sun className="w-3.5 h-3.5 text-yellow-500" />
+                           <span className={`text-[10px] font-black uppercase tracking-widest ${theme === 'dark' ? 'text-gray-500' : 'text-green-800/40'}`}>Mood</span>
+                        </div>
+                        <span className={`text-base font-black ${theme === 'dark' ? 'text-white' : 'text-green-900'}`}>{record.mood}</span>
                       </div>
                     </div>
                   </motion.div>
                 ))}
                 {history.length === 0 && (
-                  <div className={`text-center py-6 text-[10px] italic font-medium ${theme === 'dark' ? 'text-green-800/60' : 'text-green-800/30'}`}>No health records yet. Complete a check!</div>
+                  <div className={`text-center py-16 rounded-[40px] border-2 border-dashed ${theme === 'dark' ? 'border-green-900/50 text-green-800/40' : 'border-green-100 text-green-800/20'}`}>
+                    <p className="text-[10px] font-black uppercase tracking-widest italic leading-relaxed">Awaiting node telemetry <br /> for analysis</p>
+                  </div>
                 )}
               </div>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
 
       {/* Full History Modal */}
@@ -666,6 +740,7 @@ No markdown, just raw JSON.`;
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
+              transition={springConfig}
               className={`w-full max-w-4xl max-h-[90vh] rounded-[40px] p-8 md:p-10 shadow-2xl relative border flex flex-col ${theme === 'dark' ? 'bg-[#0a201a] border-green-900' : 'bg-white border-green-100'}`}
             >
               <button 
@@ -762,6 +837,7 @@ No markdown, just raw JSON.`;
               initial={{ scale: 0.9, y: 30 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 30 }}
+              transition={springConfig}
               className={`w-full max-w-xl rounded-[40px] p-8 md:p-10 shadow-2xl relative border ${theme === 'dark' ? 'bg-[#0a201a] border-green-900' : 'bg-white border-green-100'}`}
             >
               <button 
@@ -1026,6 +1102,7 @@ No markdown, just raw JSON.`;
         )}
       </AnimatePresence>
     </section>
+    </>
   );
 }
 

@@ -2,8 +2,8 @@ import { motion, useMotionValue, useSpring } from "motion/react";
 import { Sparkles, ArrowRight, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { signInWithPopup, onAuthStateChanged } from "firebase/auth";
-import { auth, googleProvider } from "../lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../lib/firebase";
 
 import { useTheme } from "../context/ThemeContext";
 
@@ -12,7 +12,6 @@ export default function Hero() {
   const [showModels, setShowModels] = useState(false);
   const [isIframeLoaded, setIsIframeLoaded] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { theme } = useTheme();
   
@@ -32,20 +31,23 @@ export default function Hero() {
     };
   }, []);
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    try {
-      await signInWithPopup(auth, googleProvider);
-      navigate("/#dashboard");
-    } catch (err) {
-      console.error("Google sign in error from Hero:", err);
-    } finally {
-      setLoading(false);
-    }
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
     <section id="hero" className={`relative pt-32 pb-20 overflow-hidden transition-colors duration-500 ${theme === 'dark' ? 'bg-[#051510]' : 'bg-white'}`}>
+      {/* Integrated Neural Grid */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className={`absolute inset-0 opacity-[0.05] ${theme === 'dark' ? 'invert' : ''}`} style={{ backgroundImage: 'radial-gradient(#39FF14 1px, transparent 1px)', backgroundSize: '50px 50px' }} />
+        <motion.div 
+          animate={{ x: [0, 100, 0], y: [0, 50, 0] }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className={`absolute -top-1/4 -right-1/4 w-full h-full rounded-full blur-[160px] opacity-20 ${theme === 'dark' ? 'bg-neon-green' : 'bg-green-300'}`} 
+        />
+      </div>
+
       {/* Background Glows */}
       <motion.div 
         initial={{ opacity: 0 }}
@@ -73,36 +75,49 @@ export default function Hero() {
                 <Sparkles className="w-4 h-4 animate-pulse" />
                 <span>Padhai bhi, Health bhi • AI Mentor</span>
               </div>
-              <h1 className={`text-6xl md:text-8xl font-display font-black leading-[0.9] mb-8 tracking-tighter ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>
-                Scale Your <span className="neon-text italic">Study Power</span> with AI
+              <h1 className={`text-5xl md:text-8xl font-display font-black leading-[0.9] mb-8 tracking-tighter ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>
+                The Neural <span className="neon-text italic">Study Path</span> <br />
+                <span className="text-xl md:text-3xl font-bold tracking-widest uppercase opacity-40">for Smart Students</span>
               </h1>
               <p className={`text-xl md:text-2xl mb-10 max-w-xl leading-relaxed font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-green-800/70'}`}>
-                SwasthyaSaathi handles your <span className="text-neon-green">burnout</span> and <span className="text-neon-green">doubts</span> so you can focus on mastering your goals. 
-                <span className="block mt-2 opacity-60">Ab study hogi bina kisi stress ke!</span>
+                SwasthyaSaathi balances your <span className="text-neon-green font-black underline decoration-neon-green/30 underline-offset-4">burnout</span> and cognitive state so you can focus on mastering your academic peak. 
               </p>
-              <div className="flex flex-wrap gap-4">
-                {user ? (
-                  <button 
-                    onClick={() => document.getElementById('dashboard')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="bg-neon-green text-white px-8 py-4 rounded-full font-bold text-lg hover:scale-105 transition-transform neon-glow flex items-center gap-2"
-                  >
-                    Go to Dashboard <ArrowRight className="w-5 h-5" />
-                  </button>
-                ) : (
-                  <Link 
-                    to="/signup"
-                    className="bg-neon-green text-white px-8 py-4 rounded-full font-bold text-lg hover:scale-105 transition-transform neon-glow flex items-center gap-2"
-                  >
-                    Get Started <ArrowRight className="w-5 h-5" />
-                  </Link>
-                )}
+              <div className="flex flex-wrap gap-4 mb-12">
                 <button 
-                  onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
-                  className={`px-8 py-4 rounded-full font-bold text-lg hover:bg-opacity-80 transition-all ${theme === 'dark' ? 'bg-white/5 border border-white/10 text-white' : 'glass text-green-900'}`}
+                  onClick={() => scrollToSection(user ? 'dashboard' : 'signup')}
+                  className="bg-neon-green text-green-950 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl shadow-neon-green/20 flex items-center gap-2 group"
                 >
-                  See Demo
+                  {user ? "Personal Dashboard" : "Start Neural Path"} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </button>
+                {!user && (
+                    <button 
+                      onClick={() => navigate('/signin')}
+                      className={`px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-all border-2 ${theme === 'dark' ? 'bg-transparent border-green-900 text-white hover:border-neon-green' : 'bg-transparent border-green-100 text-green-900 hover:border-neon-green'}`}
+                    >
+                      Sign In
+                    </button>
+                )}
               </div>
+
+              {/* Social Proof */}
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8 }}
+                className="flex items-center gap-4 py-4 border-l-2 border-neon-green/30 pl-6"
+              >
+                <div className="flex -space-x-3">
+                  {[1,2,3,4].map((i) => (
+                    <div key={i} className={`w-10 h-10 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold ${theme === 'dark' ? 'bg-green-900' : 'bg-green-100'}`}>
+                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=user${i}`} alt="User" className="w-full h-full rounded-full" />
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <p className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>10k+ Students</p>
+                  <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${theme === 'dark' ? 'text-neon-green/60' : 'text-green-700/60'}`}>Mastering Studies & Health</p>
+                </div>
+              </motion.div>
             </div>
           </motion.div>
 

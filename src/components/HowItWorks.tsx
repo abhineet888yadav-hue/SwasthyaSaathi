@@ -29,7 +29,7 @@ export default function HowItWorks() {
   const { theme } = useTheme();
 
   return (
-    <section className={`py-20 transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0a201a]' : 'bg-white'}`}>
+    <section id="how-it-works" className={`py-20 transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0a201a]' : 'bg-white'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className={`text-3xl md:text-5xl font-display font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>How it <span className="neon-text">Works</span></h2>

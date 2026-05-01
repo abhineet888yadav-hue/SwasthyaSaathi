@@ -11,10 +11,8 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import ChatbotWidget from "./components/ChatbotWidget";
 import Home from "./components/Home";
-import SignIn from "./components/SignIn";
-import SignUp from "./components/SignUp";
-import Verification from "./components/Verification";
 import Profile from "./components/Profile";
+import Auth from "./components/Auth";
 
 import { HealthProvider } from "./context/HealthContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
@@ -40,6 +38,7 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 }
 
 import NeuralLoader from "./components/NeuralLoader";
+import GeminiKeyModal from "./components/GeminiKeyModal";
 
 function MainContent() {
   const [isLoading, setIsLoading] = useState(true);
@@ -51,17 +50,19 @@ function MainContent() {
     "Calibrating Empathy Modules...",
     "Booting Hinglish Persona...",
     "Syncing Academic Mastery Nodes...",
-    "Almost there, Boss! Bas ho gaya..."
+    "Saathi is warming up...",
+    "Bas thoda sa aur, Boss! Connecting...",
+    "Neural Network: Optimal ✅"
   ];
 
   useEffect(() => {
     const statusInterval = setInterval(() => {
       setLoadingStep(prev => (prev < loadingStatuses.length - 1 ? prev + 1 : prev));
-    }, 600);
+    }, 450);
 
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 3200);
+    }, 3500);
 
     return () => {
       clearTimeout(timer);
@@ -75,54 +76,93 @@ function MainContent() {
         <motion.div
           key="loader"
           initial={{ opacity: 1 }}
-          exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
+          exit={{ opacity: 0, scale: 1.05, filter: "blur(20px)" }}
           transition={{ duration: 0.8, ease: "easeInOut" }}
           className={`fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden ${theme === 'dark' ? 'bg-[#051510]' : 'bg-white'}`}
         >
-          {/* Neural Grid Background */}
-          <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#39FF14 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
-          <div className="absolute inset-0 bg-gradient-to-t from-neon-green/5 via-transparent to-transparent pointer-events-none" />
-
-          <div className="relative mb-12">
-            <NeuralLoader size="lg" />
+          {/* Enhanced Neural Background */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute inset-0 opacity-[0.1]" style={{ backgroundImage: 'radial-gradient(#39FF14 1.5px, transparent 1.5px)', backgroundSize: '40px 40px' }} />
+            
+            {/* Pulsing Glows */}
+            <motion.div 
+              animate={{ 
+                scale: [1, 1.2, 1],
+                opacity: [0.1, 0.2, 0.1],
+                x: [-20, 20, -20],
+                y: [-20, 20, -20]
+              }}
+              transition={{ duration: 10, repeat: Infinity }}
+              className="absolute -top-1/4 -left-1/4 w-full h-full bg-neon-green/10 rounded-full blur-[120px]"
+            />
+            <motion.div 
+              animate={{ 
+                scale: [1.2, 1, 1.2],
+                opacity: [0.05, 0.15, 0.05],
+                x: [20, -20, 20],
+                y: [20, -20, 20]
+              }}
+              transition={{ duration: 12, repeat: Infinity }}
+              className="absolute -bottom-1/4 -right-1/4 w-full h-full bg-neon-green/5 rounded-full blur-[120px]"
+            />
           </div>
+
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="relative mb-12"
+          >
+            <NeuralLoader size="lg" />
+          </motion.div>
           
-          <div className="text-center space-y-4 relative z-10">
+          <div className="text-center space-y-6 relative z-10">
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
               className="flex flex-col items-center"
             >
-              <h1 className={`text-4xl md:text-5xl font-display font-black tracking-tighter ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>
+              <h1 className={`text-5xl md:text-7xl font-display font-black tracking-tighter mb-2 ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>
                 SWASTHYA <span className="neon-text italic">SAATHI</span>
               </h1>
-              <span className="text-[10px] font-black uppercase tracking-[0.5em] text-neon-green/60 mt-1 pl-2">Neural Student Mentor</span>
+              <div className="flex items-center gap-3">
+                <div className="h-[1px] w-8 bg-neon-green/50" />
+                <span className="text-[12px] font-black uppercase tracking-[0.6em] text-neon-green drop-shadow-[0_0_8px_#39FF14]">Neural Student Mentor</span>
+                <div className="h-[1px] w-8 bg-neon-green/50" />
+              </div>
             </motion.div>
 
             <motion.div 
               key={loadingStep}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex items-center gap-3 justify-center min-h-[1.5rem]`}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="min-h-[1.5rem]"
             >
-              <span className={`text-[11px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-gray-400' : 'text-green-800/60'}`}>
+              <span className={`text-[12px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full border border-neon-green/20 ${theme === 'dark' ? 'bg-green-900/20 text-green-400' : 'bg-green-50 text-green-700'}`}>
                 {loadingStatuses[loadingStep]}
               </span>
             </motion.div>
           </div>
 
-          <div className="absolute bottom-20 px-8 w-full max-w-xs space-y-2">
-            <div className={`w-full h-1 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/5' : 'bg-green-50'}`}>
+          <div className="absolute bottom-16 px-8 w-full max-w-sm space-y-4">
+            <div className={`w-full h-1.5 rounded-full overflow-hidden p-[1px] ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-green-50 border border-green-100'}`}>
               <motion.div
                 initial={{ width: "0%" }}
                 animate={{ width: "100%" }}
-                transition={{ duration: 3.2, ease: "linear" }}
-                className="h-full bg-neon-green shadow-[0_0_15px_#39FF14]"
+                transition={{ duration: 3.5, ease: "easeInOut" }}
+                className="h-full bg-neon-green shadow-[0_0_20px_#39FF14] rounded-full"
               />
             </div>
-            <div className="flex justify-between items-center text-[8px] font-bold uppercase tracking-widest opacity-40">
-              <span>System Boot</span>
-              <span>v2.0.4 - Active</span>
+            <div className="flex justify-between items-center px-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-neon-green/40">Syncing Neurons...</span>
+              <motion.span 
+                animate={{ opacity: [1, 0.5, 1] }} 
+                transition={{ duration: 1, repeat: Infinity }}
+                className="text-[10px] font-black uppercase tracking-widest text-neon-green"
+              >
+                Quantum Stable
+              </motion.span>
             </div>
           </div>
         </motion.div>
@@ -139,9 +179,8 @@ function MainContent() {
               <PageTransition>
                 <Routes>
                   <Route path="/" element={<Home />} />
-                  <Route path="/signin" element={<SignIn />} />
-                  <Route path="/signup" element={<SignUp />} />
-                  <Route path="/verification" element={<Verification />} />
+                  <Route path="/signin" element={<Auth />} />
+                  <Route path="/signup" element={<Auth />} />
                   <Route path="/profile" element={<Profile />} />
                 </Routes>
               </PageTransition>
@@ -161,6 +200,7 @@ export default function App() {
         <BrowserRouter>
           <MainContent />
           <ChatbotWidget />
+          <GeminiKeyModal />
         </BrowserRouter>
       </HealthProvider>
     </ThemeProvider>

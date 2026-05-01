@@ -5,6 +5,8 @@ import Dashboard from "./Dashboard";
 import ImageGenerator from "./ImageGenerator";
 import FAQ from "./FAQ";
 import Pricing from "./Pricing";
+import Testimonials from "./Testimonials";
+import Footer from "./Footer";
 
 export default function Home() {
   return (
@@ -15,6 +17,7 @@ export default function Home() {
       <ImageGenerator />
       <Dashboard />
       <Pricing />
+      <Testimonials />
       <FAQ />
     </main>
   );
