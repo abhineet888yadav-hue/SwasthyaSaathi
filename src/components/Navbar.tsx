@@ -47,11 +47,24 @@ export default function Navbar() {
       navigate(`/#${sectionId}`);
       return;
     }
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
+    
+    // Close menu first
     setIsOpen(false);
+    
+    // Smooth scroll with a delay to let menu close completely on mobile
+    setTimeout(() => {
+      const element = document.getElementById(sectionId);
+      if (element) {
+        const offset = 90; // Slightly more offset for safe margins
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.scrollY - offset;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: "smooth"
+        });
+      }
+    }, 350);
   };
 
   return (
