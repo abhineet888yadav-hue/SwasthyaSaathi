@@ -208,7 +208,6 @@ function MainContent() {
       </main>
       <Footer />
       {!isUnverified && <ChatbotWidget />}
-      {!isUnverified && <GeminiKeyModal />}
     </motion.div>
   );
 }

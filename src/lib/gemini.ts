@@ -6,7 +6,7 @@ export function getGeminiAI() {
   if (genAI) return genAI;
 
   // 1. Check environment variables (Prioritize process.env.GEMINI_API_KEY for this platform)
-  let apiKey: string | undefined = process.env.GEMINI_API_KEY;
+  let apiKey: string | undefined = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyCDY52-qmmKrDWOzkDZ6mcpndt4SDaj5NA";
   
   // 2. Check localStorage (User provided fallback)
   if (!apiKey && typeof window !== 'undefined') {
