@@ -259,12 +259,20 @@ Student Persona Analysis:
 ${history.length > 5 ? "User shows consistent academic focus but occasional sleep deprivation trends." : "New user, building neural profile."}
 `;
 
-    const contents: any[] = messages.slice(-5).map(m => ({ 
+    const contents: any[] = messages.slice(-15).map(m => ({ 
       role: m.role, 
-      parts: [{ text: m.content }] 
+      parts: m.image 
+        ? [{ text: m.content }, { inlineData: { data: "IMAGE_CONTENT_PLACEHOLDER", mimeType: "image/jpeg" } }] // We don't have the base64 here anymore, but historical image mentions are enough or we skip them
+        : [{ text: m.content }] 
     }));
 
-    // Add user message with parts
+    // Better context construction: Filter out images from old turns to keep payload small. 
+    // We replace historical images with a text tag for context.
+    const historicalContents = messages.slice(-10).map(m => ({
+      role: m.role,
+      parts: [{ text: m.image ? `[User uploaded an image] ${m.content}` : m.content }]
+    }));
+
     const userParts: any[] = [{ text: userMessage.content }];
     if (imgToProcess) {
       const base64 = await fileToBase64(imgToProcess.file);
@@ -275,7 +283,9 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
         }
       });
     }
-    contents.push({ role: "user", parts: userParts });
+    
+    // Construct the full payload for the API
+    const finalContents = [...historicalContents, { role: "user", parts: userParts }];
 
     const customSystemInstruction = `You are the **SwasthyaSaathi AI Mentor**, an expert companion for students. 
     
@@ -293,27 +303,16 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
     ${isDeepThinking ? 'MODE: [DEEP REASONING ACTIVE] - Perform advanced synthesis and high-energy academic coaching.' : 'MODE: [RAPID RESPONSE] - Quick motivational support.'}
     `;
 
-    const callGemini = async (modelName: string, retryCount = 0): Promise<any> => {
-      try {
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            contents, 
-            systemInstruction: customSystemInstruction,
-            thinkingConfig: isDeepThinking ? { thinkingLevel: 'HIGH' } : undefined
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.details || errorData.error || "Server error");
+    const callGemini = async (modelName: string): Promise<any> => {
+      const ai = getGeminiAI();
+      return await ai.models.generateContent({
+        model: modelName,
+        contents: finalContents,
+        config: {
+          systemInstruction: customSystemInstruction,
+          thinkingConfig: isDeepThinking ? { thinkingLevel: ThinkingLevel.HIGH } : undefined
         }
-
-        return await response.json();
-      } catch (err: any) {
-        throw err;
-      }
+      });
     };
 
     try {
@@ -339,8 +338,8 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
         userFriendlyError = "Bahut saare students ek saath sawal pooch rahe hain! SwasthyaSaathi thoda overwhelmed hai. (Quota Limit)";
       } else if (msg.includes("safety") || msg.includes("blocked")) {
         userFriendlyError = "Hmm, ye topic safety guidelines ke khilaaf hai. Chaliye padhai ya health ki baat karte hain!";
-      } else if (msg.includes("api key") || msg.includes("unauthorized") || msg.includes("configured") || msg.includes("missing")) {
-        userFriendlyError = "Server configuration mein kuch kami hai. Please admin se contact karein ya thodi der mein try karein.";
+      } else if (msg.includes("api key") || msg.includes("unauthorized") || msg.includes("configured") || msg.includes("missing") || msg.includes("ai key")) {
+        userFriendlyError = "Server configuration mein kuch kami hai (API Key): " + err.message;
       } else if (msg.includes("network") || msg.includes("fetch") || msg.includes("offline")) {
         userFriendlyError = "Internet connection check karein, main aap tak nahi pahunch paa raha hoon!";
       } else if (msg.includes("500") || msg.includes("503")) {
@@ -623,7 +622,7 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
                         {msg.image && (
                           <img src={msg.image} alt="User upload" className="w-full h-auto rounded-xl mb-3 border border-white/20" referrerPolicy="no-referrer" />
                         )}
-                        <div className="prose prose-sm max-w-none prose-p:leading-relaxed">
+                        <div className={`prose prose-sm max-w-none prose-p:leading-relaxed ${theme === 'dark' ? 'prose-invert prose-headings:text-neon-green' : 'prose-headings:text-green-900'}`}>
                           <ReactMarkdown>{msg.content}</ReactMarkdown>
                         </div>
                         {msg.timestamp && (
@@ -805,10 +804,36 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
                   </div>
                 </div>
               )}
+              
+              {/* Sticky Disclaimer */}
+              <div className={`mt-4 p-3 rounded-2xl border flex items-start gap-3 ${theme === 'dark' ? 'bg-red-950/20 border-red-900/50 text-red-200' : 'bg-red-50 border-red-100 text-red-900'}`}>
+                <AlertCircle className="w-5 h-5 shrink-0 text-red-500" />
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold leading-tight uppercase tracking-wider">Medical Disclaimer</p>
+                  <p className="text-[9px] leading-relaxed opacity-80 font-medium">
+                    SwasthyaSaathi is an AI guide, not a medical professional. If you have a real emergency (Chest Pain, Breathing difficulty), call <strong>102</strong> or <strong>108</strong> immediately.
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Input and Controls */}
             <div className={`p-4 backdrop-blur-md border-t shrink-0 transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0a201a] border-green-900' : 'bg-white/80 border-green-100'}`}>
+              <div className="flex items-center gap-2 mb-3 h-8">
+                <button 
+                  onClick={() => handleSend("Tell me some healthy habits for students.")}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all truncate max-w-[150px] ${theme === 'dark' ? 'bg-green-900/20 border-green-800 text-green-400 hover:border-green-600' : 'bg-green-50 border-green-100 text-green-800 hover:border-green-300'}`}
+                >
+                  Healthy Habits?
+                </button>
+                <button 
+                  onClick={() => window.open('tel:102')}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-colors shadow-lg shadow-red-900/20 animate-pulse"
+                >
+                  <Activity className="w-3 h-3" />
+                  Life SOS (102)
+                </button>
+              </div>
               
               {/* Quick Action Suggestions */}
               {!isLoading && messages.length < 4 && (

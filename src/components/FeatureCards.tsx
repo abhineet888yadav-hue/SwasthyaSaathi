@@ -165,13 +165,7 @@ End with 'Need more detail? Just ask!' only if appropriate for the flow.`
       setMessages(prev => [...prev, { role: "model", content: response.text || "error", provider: "gemini" }]);
     } catch (error: any) {
       console.error("Chat error:", error);
-      const msg = error?.message || "";
-      let errorContent = msg || "I encountered an error. Please try again.";
-      if (msg.includes("API_KEY") || msg.includes("api_key_missing")) {
-        errorContent = "⚠️ AI Key setup nahi hai. Server admin se contact karein!";
-      } else if (msg.includes("quota")) {
-        errorContent = "⚠️ AI Quota exceeded. Please try again later.";
-      }
+      const errorContent = error?.message || "I encountered an error. Please try again.";
       setMessages(prev => [...prev, { role: "model", content: errorContent, provider: "system" }]);
     } finally {
       setIsLoading(false);
@@ -288,7 +282,8 @@ End with 'Need more detail? Just ask!' only if appropriate for the flow.`
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, y: { type: "spring", stiffness: 300, damping: 20 } }}
       viewport={{ once: true }}
-      className="glass p-6 rounded-3xl border-neon-green/30 transition-all group bg-white shadow-sm flex flex-col h-[650px] relative overflow-hidden"
+      id={`mini-chat-card-inner-${index}`}
+      className="glass p-6 rounded-3xl border-neon-green/30 transition-all group-hover:border-neon-green/80 group-hover:shadow-[0_0_25px_rgba(57,255,20,0.25)] bg-white shadow-sm flex flex-col h-[650px] relative overflow-hidden"
     >
       {/* Architectural Background Pattern */}
       <div className="absolute top-0 right-0 w-32 h-32 bg-neon-green/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl pointer-events-none" />
@@ -484,7 +479,8 @@ function StudyPlanCard({ feature, index }: { feature: any, index: number }) {
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, y: { type: "spring", stiffness: 300, damping: 20 } }}
       viewport={{ once: true }}
-      className="glass p-6 rounded-3xl border-emerald-600/30 transition-all group bg-white shadow-sm flex flex-col h-[650px] relative overflow-hidden"
+      id={`study-plan-card-inner-${index}`}
+      className="glass p-6 rounded-3xl border-emerald-600/30 transition-all group-hover:border-emerald-600/80 group-hover:shadow-[0_0_25px_rgba(5,150,105,0.25)] bg-white shadow-sm flex flex-col h-[650px] relative overflow-hidden"
     >
       {/* Architectural Background Pattern */}
       <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl pointer-events-none" />
@@ -594,12 +590,7 @@ function RevisionCard({ feature, index }: { feature: any, index: number }) {
       });
     } catch (error: any) {
       console.error("Revision error:", error);
-      const msg = error?.message || "";
-      if (msg.includes("API_KEY") || msg.includes("key") || msg.includes("missing")) {
-        setError("⚠️ AI Key missing. Click 'Fix AI Key' button at bottom right!");
-      } else {
-        setError(error?.message || "I encountered an error. Please try again.");
-      }
+      setError(error?.message || "I encountered an error. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -710,7 +701,8 @@ function RevisionCard({ feature, index }: { feature: any, index: number }) {
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, y: { type: "spring", stiffness: 300, damping: 20 } }}
       viewport={{ once: true }}
-      className="glass p-6 rounded-3xl border-lime-600/30 transition-all group bg-white shadow-sm flex flex-col h-[650px] relative overflow-hidden"
+      id={`revision-card-inner-${index}`}
+      className="glass p-6 rounded-3xl border-lime-600/30 transition-all group-hover:border-lime-600/80 group-hover:shadow-[0_0_25px_rgba(101,163,13,0.25)] bg-white shadow-sm flex flex-col h-[650px] relative overflow-hidden"
     >
       {/* Architectural Background Pattern */}
       <div className="absolute top-0 right-0 w-32 h-32 bg-lime-600/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl pointer-events-none" />
@@ -1324,22 +1316,38 @@ export default function FeatureCards() {
           {features.map((feature, index) => {
             if (index === 0) {
               return (
-                <div key={index} className="md:col-span-2">
+                <div key={index} id={`feature-card-wrapper-${index}`} className="md:col-span-2 group">
                   <MiniChatCard feature={feature} index={index} />
                 </div>
               );
             }
             if (index === 1) {
-              return <StudyPlanCard key={index} feature={feature} index={index} />;
+              return (
+                <div key={index} id={`feature-card-wrapper-${index}`} className="group">
+                  <StudyPlanCard feature={feature} index={index} />
+                </div>
+              );
             }
             if (index === 2) {
-              return <HealthCheckCard key={index} feature={feature} index={index} />;
+              return (
+                <div key={index} id="feature-card-health" className="group">
+                  <HealthCheckCard feature={feature} index={index} />
+                </div>
+              );
             }
             if (index === 3) {
-              return <RevisionCard key={index} feature={feature} index={index} />;
+              return (
+                <div key={index} id={`feature-card-wrapper-${index}`} className="group">
+                  <RevisionCard feature={feature} index={index} />
+                </div>
+              );
             }
             if (index === 4) {
-              return <ChapterAnalysisCard key={index} feature={feature} index={index} />;
+              return (
+                <div key={index} id={`feature-card-wrapper-${index}`} className="group">
+                  <ChapterAnalysisCard feature={feature} index={index} />
+                </div>
+              );
             }
             return null;
           })}

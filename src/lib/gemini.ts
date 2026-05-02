@@ -3,50 +3,24 @@ import { GoogleGenAI } from "@google/genai";
 let genAI: GoogleGenAI | null = null;
 
 export function getGeminiAI() {
-  // Return a mock object that matches the @google/genai SDK structure
-  // but redirects calls to our server-side proxy.
-  return {
-    models: {
-      generateContent: async (params: { model: string; contents: any; config?: any }) => {
-        try {
-          const response = await fetch("/api/ai", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(params),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: "Unknown server error" }));
-            const errorMsg = errorData.details || errorData.error || "AI Proxy Error";
-            throw new Error(errorMsg);
-          }
-
-          const data = await response.json();
-          // Mock the GenerateContentResponse shape
-          // Components expect .text property
-          return {
-            text: data.text || "",
-            get functionCalls() { return undefined; }
-          };
-        } catch (error: any) {
-          console.error("Gemini Proxy Error:", error);
-          throw error;
-        }
-      },
+  if (!genAI) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      // In development on some platforms, this might be missing initially.
+      // The frontend build system typically injects it.
+      console.warn("GEMINI_API_KEY is not defined in the environment.");
     }
-  } as any;
+    genAI = new GoogleGenAI({ apiKey: apiKey || "" });
+  }
+  return genAI;
 }
 
 /**
- * Saves the Gemini API key to local storage for persistence across reloads.
+ * Saves the Gemini API key to local storage (optional backup).
  */
 export function setLocalGeminiKey(key: string) {
   if (typeof window !== 'undefined') {
     localStorage.setItem('SW_GEMINI_KEY', key);
-    // Reset the internal instance so it re-initializes with the new key
-    genAI = null;
   }
 }
 
@@ -56,7 +30,6 @@ export function setLocalGeminiKey(key: string) {
 export function clearLocalGeminiKey() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('SW_GEMINI_KEY');
-    genAI = null;
   }
 }
 

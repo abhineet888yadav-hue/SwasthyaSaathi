@@ -3,9 +3,9 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
-dotenv.config();
+const envResult = dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -20,137 +20,32 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "SwasthyaSaathi Backend is Running" });
 });
 
-// Gemini MindMap Generation Endpoint
-app.post("/api/generate-mindmap", async (req, res) => {
-  try {
-    const { topic } = req.body;
-    
-    if (!topic) {
-      return res.status(400).json({ error: "Topic is required" });
-    }
+const SYSTEM_INSTRUCTION = `## ROLE
+You are "SwasthyaSaathi," an advanced AI health companion designed to provide accessible healthcare guidance, symptom triage, and wellness advice. You act as a supportive, empathetic, and knowledgeable first point of contact for health concerns.
 
-    const apiKey = process.env.GEMINI_API_KEY?.trim();
-    if (!apiKey) {
-      return res.status(401).json({ error: "GEMINI_API_KEY is not configured on the server." });
-    }
+## IDENTITY & TONE
+- Name: SwasthyaSaathi.
+- Tone: Empathetic, professional, calm, and clear.
+- Language: Primary English, but capable of understanding and responding in Hindi or "Hinglish" (Hindi written in Latin script) to assist Indian users effectively.
 
-    const genAI = new GoogleGenAI({ apiKey });
+## CORE INSTRUCTIONS
+1. SYMPTOM ANALYSIS: When a user describes symptoms, analyze them logically. Provide common possibilities but NEVER provide a definitive clinical diagnosis.
+2. MEDICAL DISCLAIMER: You MUST include a disclaimer in every response: "Disclaimer: I am an AI, not a doctor. This information is for guidance only. Please consult a medical professional for diagnosis."
+3. EMERGENCY TRIAGE: If a user mentions "Chest pain," "Difficulty breathing," "Sudden paralysis," or "Severe bleeding," immediately stop general advice and urge them to call emergency services (e.g., 102 or 108 in India) or go to the nearest hospital.
+4. NO PRESCRIPTIONS: Suggest lifestyle changes or over-the-counter (OTC) categories (e.g., "antacids"), but never prescribe specific dosages of controlled medications.
 
-    const prompt = `Topic: "${topic}". 
-    You are an expert academic mentor. Create a comprehensive, well-structured hierarchical mind map for this topic. 
-    Break it down into 4-6 main logical branches and 3-5 key details/sub-points for each branch.
-    The level should be suitable for higher education students but clear enough for high schoolers.
-    Use professional yet engaging academic terminology.
-    Return the response strictly as valid JSON.`;
+## KNOWLEDGE BASE FOCUS
+- Preventive care (diet, exercise, hygiene).
+- Explanation of medical terms in simple language.
+- Guidance on Indian government health schemes (like Ayushman Bharat) if relevant.
+- Mental health support with a focus on active listening and encouraging professional therapy.
 
-    const result = await genAI.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            topic: { type: Type.STRING, description: "The central core topic" },
-            branches: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  label: { type: Type.STRING, description: "Main branch category" },
-                  details: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING, description: "Specific sub-point or detail" }
-                  }
-                },
-                required: ["label", "details"]
-              }
-            }
-          },
-          required: ["topic", "branches"]
-        }
-      }
-    });
+## FORMATTING
+- Use **bolding** for important warnings.
+- Use bullet points for symptoms or steps to take.
+- Keep responses concise so they are easy to read on mobile devices.`;
 
-    const text = result.text || "";
-    const cleanJson = text.replace(/```json|```/gi, "").trim();
-    res.json(JSON.parse(cleanJson || "{}"));
-  } catch (error: any) {
-    console.error("Gemini Mindmap Error:", error);
-    res.status(500).json({ 
-      error: "Mind map generation failed",
-      details: error.message 
-    });
-  }
-});
-
-// AI Mentor Chat Endpoint
-app.post("/api/chat", async (req, res) => {
-  try {
-    const { contents, systemInstruction, thinkingConfig } = req.body;
-    
-    if (!contents || !Array.isArray(contents)) {
-      return res.status(400).json({ error: "Contents array is required" });
-    }
-
-    const apiKey = process.env.GEMINI_API_KEY?.trim();
-    if (!apiKey) {
-      return res.status(401).json({ error: "GEMINI_API_KEY is not configured on the server." });
-    }
-
-    const genAI = new GoogleGenAI({ apiKey });
-
-    // Handle multimodal data if present in parts
-    const result = await genAI.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents,
-      config: {
-        systemInstruction: systemInstruction || "You are an expert AI mentor named SwasthyaSaathi.",
-        maxOutputTokens: 2048,
-        temperature: 0.7,
-        thinkingConfig: thinkingConfig ? thinkingConfig : undefined
-      },
-    });
-
-    res.json({ text: result.text || "" });
-  } catch (error: any) {
-    console.error("Chat Server Error:", error);
-    res.status(500).json({ 
-      error: "Chat generation failed",
-      details: error.message 
-    });
-  }
-});
-
-// Generic AI Endpoint
-app.post("/api/ai", async (req, res) => {
-  try {
-    const { model, contents, config } = req.body;
-    
-    const apiKey = process.env.GEMINI_API_KEY?.trim();
-    if (!apiKey) {
-      return res.status(401).json({ error: "GEMINI_API_KEY is not configured on the server." });
-    }
-
-    const genAI = new GoogleGenAI({ apiKey });
-
-    const result = await genAI.models.generateContent({
-      model: model || "gemini-3-flash-preview",
-      contents,
-      config: config || {}
-    });
-
-    res.json({ text: result.text || "" });
-  } catch (error: any) {
-    console.error("AI Proxy Error:", error);
-    res.status(500).json({ 
-      error: "AI Generation failed",
-      details: error.message 
-    });
-  }
-});
-
-async function setupApp() {
+async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -165,17 +60,16 @@ async function setupApp() {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
+
+  // Only listen if not in a serverless environment that handles listening
+  if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`[SwasthyaSaathi] Server is up and listening on port ${PORT}`);
+      console.log(`[SwasthyaSaathi] Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  }
 }
 
-setupApp();
-
-// Only listen if not in a Vercel-like environment (Vercel uses the exported app)
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`[SwasthyaSaathi] Server is up and listening on port ${PORT}`);
-    console.log(`[SwasthyaSaathi] Node Version: ${process.version}`);
-    console.log(`[SwasthyaSaathi] Environment: ${process.env.NODE_ENV || 'development'}`);
-  });
-}
+startServer();
 
 export default app;

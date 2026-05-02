@@ -4,7 +4,8 @@ import {
   Network, Send, Loader2, Download, 
   RefreshCw, ZoomIn, ZoomOut, Maximize2,
   Sparkles, BrainCircuit, AlertCircle, Info,
-  Share2, Camera, Check
+  Share2, Camera, Check, ChevronDown, ChevronUp,
+  Plus, Minus
 } from "lucide-react";
 import { 
   ReactFlow, 
@@ -24,13 +25,13 @@ import {
   ReactFlowProvider
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { GoogleGenAI, Type } from "@google/genai";
 import { getGeminiAI } from "../lib/gemini";
-import { Type } from "@google/genai";
 import * as htmlToImage from "html-to-image";
 
 // Custom Node Components for better styling
 const RootNode = ({ data }: { data: { label: string } }) => (
-  <div className="px-6 py-4 rounded-2xl bg-neon-green text-green-950 font-black border-2 border-green-950 shadow-[0_10px_30px_rgba(57,255,20,0.3)] min-w-[200px] text-center relative group">
+  <div id="mind-map-root-node" className="px-6 py-4 rounded-2xl bg-neon-green text-green-950 font-black border-2 border-green-950 shadow-[0_10px_30px_rgba(57,255,20,0.3)] min-w-[200px] text-center relative group hover:scale-105 hover:shadow-[0_15px_40px_rgba(57,255,20,0.5)] transition-all cursor-default">
     <div className="absolute -top-3 -left-3 bg-green-950 text-neon-green p-1.5 rounded-lg rotate-[-12deg] shadow-lg group-hover:rotate-0 transition-transform">
       <BrainCircuit className="w-4 h-4" />
     </div>
@@ -39,16 +40,31 @@ const RootNode = ({ data }: { data: { label: string } }) => (
   </div>
 );
 
-const BranchNode = ({ data }: { data: { label: string } }) => (
-  <div className="px-5 py-3 rounded-xl bg-white border-2 border-neon-green/40 text-green-950 font-bold shadow-lg min-w-[150px] text-center">
+const BranchNode = ({ data }: { data: { label: string; isCollapsed?: boolean; toggle?: () => void; hasChildren?: boolean } }) => (
+  <div 
+    id={`branch-node-${data.label.replace(/\s+/g, '-').toLowerCase()}`}
+    onClick={data.toggle}
+    className={`px-5 py-3 rounded-xl bg-white border-2 font-bold shadow-lg min-w-[150px] text-center transition-all cursor-pointer group hover:-translate-y-1
+      ${data.isCollapsed 
+        ? 'border-amber-400 bg-amber-50/30 text-amber-900 shadow-amber-200/50' 
+        : 'border-neon-green/40 hover:border-neon-green hover:shadow-[0_10px_25px_rgba(57,255,20,0.2)] text-green-950'}
+    `}
+  >
     <Handle type="target" position={Position.Top} className="!bg-neon-green" />
-    <div className="text-sm">{data.label}</div>
-    <Handle type="source" position={Position.Bottom} className="!bg-neon-green" />
+    <div className="flex items-center justify-center gap-2">
+      <div className="text-sm">{data.label}</div>
+      {data.hasChildren && (
+        <div className={`p-1 rounded-full bg-green-50 group-hover:bg-green-100 transition-colors ${data.isCollapsed ? 'text-amber-500' : 'text-neon-green'}`}>
+          {data.isCollapsed ? <Plus className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+        </div>
+      )}
+    </div>
+    {!data.isCollapsed && <Handle type="source" position={Position.Bottom} className="!bg-neon-green" />}
   </div>
 );
 
 const LeafNode = ({ data }: { data: { label: string } }) => (
-  <div className="px-4 py-2 rounded-lg bg-green-50 border border-green-200 text-green-800 shadow-sm max-w-[180px]">
+  <div id={`leaf-node-${data.label.slice(0, 15).replace(/\s+/g, '-').toLowerCase()}`} className="px-4 py-2 rounded-lg bg-green-50 border border-green-200 text-green-800 shadow-sm max-w-[180px] hover:bg-green-100 hover:border-green-400 hover:shadow-md transition-all cursor-default">
     <Handle type="target" position={Position.Left} className="!bg-green-400" />
     <div className="text-[11px] leading-tight font-medium">{data.label}</div>
   </div>
@@ -86,18 +102,48 @@ function MindMapInner() {
     setError(null);
 
     try {
-      const response = await fetch("/api/generate-mindmap", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic }),
+      const ai = getGeminiAI();
+      const prompt = `Topic: "${topic}". 
+      You are an expert academic mentor. Create a comprehensive, well-structured hierarchical mind map for this topic. 
+      Break it down into 4-6 main logical branches and 3-5 key details/sub-points for each branch.
+      The level should be suitable for higher education students but clear enough for high schoolers.
+      Use professional yet engaging academic terminology.
+      Return the response strictly as valid JSON.`;
+
+      const result = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              topic: { type: Type.STRING, description: "The central core topic" },
+              branches: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    label: { type: Type.STRING, description: "Main branch category" },
+                    details: {
+                      type: Type.ARRAY,
+                      items: { type: Type.STRING, description: "Specific sub-point or detail" }
+                    }
+                  },
+                  required: ["label", "details"]
+                }
+              }
+            },
+            required: ["topic", "branches"]
+          }
+        }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.details || errorData.error || "Server error");
-      }
-
-      const data = await response.json();
+      const text = result.text || "";
+      if (!text) throw new Error("AI ne koi response nahi bheja. Phir se try karein!");
+      
+      const cleanJson = text.replace(/```json|```/gi, "").trim();
+      const data = JSON.parse(cleanJson) as MindMapData;
       
       transformToFlow(data);
       
@@ -114,6 +160,32 @@ function MindMapInner() {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const toggleBranch = (branchId: string, childIds: string[]) => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === branchId) {
+          return {
+            ...node,
+            data: { ...node.data, isCollapsed: !node.data.isCollapsed },
+          };
+        }
+        if (childIds.includes(node.id)) {
+          return { ...node, hidden: !node.hidden };
+        }
+        return node;
+      })
+    );
+
+    setEdges((eds) =>
+      eds.map((edge) => {
+        if (childIds.includes(edge.target)) {
+          return { ...edge, hidden: !edge.hidden };
+        }
+        return edge;
+      })
+    );
   };
 
   const transformToFlow = (data: MindMapData) => {
@@ -137,10 +209,44 @@ function MindMapInner() {
       const bx = Math.cos(angle) * radius;
       const by = Math.sin(angle) * radius;
 
+      const detailIds: string[] = [];
+
+      // Sub-details
+      branch.details.forEach((detail, dIdx) => {
+        const detailId = `detail-${bIdx}-${dIdx}`;
+        detailIds.push(detailId);
+        // Spread details around the branch
+        const detailAngle = angle + (dIdx - (branch.details.length - 1) / 2) * 0.25;
+        const dx = bx + Math.cos(detailAngle) * 220;
+        const dy = by + Math.sin(detailAngle) * 220;
+
+        newNodes.push({
+          id: detailId,
+          type: "leaf",
+          data: { label: detail },
+          position: { x: dx, y: dy },
+          hidden: false,
+        });
+
+        newEdges.push({
+          id: `e-${branchId}-${detailId}`,
+          source: branchId,
+          target: detailId,
+          style: { stroke: "#A3E635", strokeWidth: 1.5, opacity: 0.6 },
+          type: ConnectionLineType.Bezier,
+          hidden: false,
+        });
+      });
+
       newNodes.push({
         id: branchId,
         type: "branch",
-        data: { label: branch.label },
+        data: { 
+          label: branch.label, 
+          isCollapsed: false,
+          hasChildren: branch.details.length > 0,
+          toggle: () => toggleBranch(branchId, detailIds)
+        },
         position: { x: bx, y: by },
       });
 
@@ -152,30 +258,6 @@ function MindMapInner() {
         type: ConnectionLineType.SmoothStep,
         style: { stroke: "#39FF14", strokeWidth: 3 },
         markerEnd: { type: MarkerType.ArrowClosed, color: "#39FF14" },
-      });
-
-      // Sub-details
-      branch.details.forEach((detail, dIdx) => {
-        const detailId = `detail-${bIdx}-${dIdx}`;
-        // Spread details around the branch
-        const detailAngle = angle + (dIdx - (branch.details.length - 1) / 2) * 0.25;
-        const dx = bx + Math.cos(detailAngle) * 220;
-        const dy = by + Math.sin(detailAngle) * 220;
-
-        newNodes.push({
-          id: detailId,
-          type: "leaf",
-          data: { label: detail },
-          position: { x: dx, y: dy },
-        });
-
-        newEdges.push({
-          id: `e-${branchId}-${detailId}`,
-          source: branchId,
-          target: detailId,
-          style: { stroke: "#A3E635", strokeWidth: 1.5, opacity: 0.6 },
-          type: ConnectionLineType.Bezier,
-        });
       });
     });
 
@@ -274,8 +356,9 @@ function MindMapInner() {
                     </label>
                     <span className="text-[9px] font-bold text-neon-green/60">AI Study Mentor</span>
                   </div>
-                  <div className="relative group">
+                  <div id="mind-map-input-container" className="relative group">
                     <input
+                      id="mind-map-main-input"
                       type="text"
                       value={topic}
                       onChange={(e) => setTopic(e.target.value)}
@@ -290,9 +373,10 @@ function MindMapInner() {
                 </div>
 
                 <button
+                  id="mind-map-generate-btn"
                   onClick={generateMindMap}
                   disabled={isGenerating || !topic.trim()}
-                  className="w-full md:w-auto px-10 group relative h-[72px] overflow-hidden bg-white text-green-950 border-2 border-green-950 rounded-[24px] font-black text-sm uppercase tracking-[0.2em] hover:bg-neon-green hover:border-neon-green active:scale-[0.98] transition-all disabled:opacity-30 shadow-lg shrink-0"
+                  className="w-full md:w-auto px-10 group relative h-[72px] overflow-hidden bg-white text-green-950 border-2 border-green-950 rounded-[24px] font-black text-sm uppercase tracking-[0.2em] hover:bg-neon-green hover:border-neon-green active:scale-[0.98] transition-all disabled:opacity-30 shadow-lg hover:shadow-neon-green/20 shrink-0"
                 >
                   <div className="relative z-10 flex items-center justify-center gap-3">
                     {isGenerating ? (

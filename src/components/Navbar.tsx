@@ -98,7 +98,7 @@ export default function Navbar() {
                   <button onClick={() => scrollToSection("features")} className={`transition-colors font-bold text-sm tracking-tight cursor-pointer ${theme === 'dark' ? 'text-gray-300 hover:text-neon-green' : 'text-green-800 hover:text-neon-green'}`}>Features</button>
                   <button onClick={() => scrollToSection("dashboard")} className={`transition-colors font-bold text-sm tracking-tight cursor-pointer ${theme === 'dark' ? 'text-gray-300 hover:text-neon-green' : 'text-green-800 hover:text-neon-green'}`}>Dashboard</button>
                   <button onClick={() => scrollToSection("pricing")} className={`transition-colors font-bold text-sm tracking-tight cursor-pointer ${theme === 'dark' ? 'text-gray-300 hover:text-neon-green' : 'text-green-800 hover:text-neon-green'}`}>Pricing</button>
-                  <button onClick={() => scrollToSection("testimonials")} className={`transition-colors font-bold text-sm tracking-tight cursor-pointer ${theme === 'dark' ? 'text-gray-300 hover:text-neon-green' : 'text-green-800 hover:text-neon-green'}`}>Community</button>
+                  <button onClick={() => scrollToSection("community")} className={`transition-colors font-bold text-sm tracking-tight cursor-pointer ${theme === 'dark' ? 'text-gray-300 hover:text-neon-green' : 'text-green-800 hover:text-neon-green'}`}>Community</button>
                 </div>
               )}
               
@@ -200,7 +200,7 @@ export default function Navbar() {
                 <button onClick={() => scrollToSection("features")} className={`block w-full text-left p-3 rounded-xl font-bold transition-all ${theme === 'dark' ? 'text-gray-300 hover:bg-white/5 active:text-neon-green' : 'text-green-800 hover:bg-green-50 active:text-neon-green'}`}>Features</button>
                 <button onClick={() => scrollToSection("dashboard")} className={`block w-full text-left p-3 rounded-xl font-bold transition-all ${theme === 'dark' ? 'text-gray-300 hover:bg-white/5 active:text-neon-green' : 'text-green-800 hover:bg-green-50 active:text-neon-green'}`}>Dashboard</button>
                 <button onClick={() => scrollToSection("pricing")} className={`block w-full text-left p-3 rounded-xl font-bold transition-all ${theme === 'dark' ? 'text-gray-300 hover:bg-white/5 active:text-neon-green' : 'text-green-800 hover:bg-green-50 active:text-neon-green'}`}>Pricing</button>
-                <button onClick={() => scrollToSection("testimonials")} className={`block w-full text-left p-3 rounded-xl font-bold transition-all ${theme === 'dark' ? 'text-gray-300 hover:bg-white/5 active:text-neon-green' : 'text-green-800 hover:bg-green-50 active:text-neon-green'}`}>Community</button>
+                <button onClick={() => scrollToSection("community")} className={`block w-full text-left p-3 rounded-xl font-bold transition-all ${theme === 'dark' ? 'text-gray-300 hover:bg-white/5 active:text-neon-green' : 'text-green-800 hover:bg-green-50 active:text-neon-green'}`}>Community</button>
               </div>
             )}
             

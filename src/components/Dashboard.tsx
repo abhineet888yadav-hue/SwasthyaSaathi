@@ -85,11 +85,18 @@ export default function Dashboard() {
     );
   }
 
-  const [tasks, setTasks] = useState<Task[]>([
-    { id: "1", task: "Review Mathematics Chapter 4", time: "45 mins", energy: 7, status: "Upcoming" },
-    { id: "2", task: "Practice Chemistry Equations", time: "30 mins", energy: 5, status: "Completed" },
-    { id: "3", task: "Read English Literature", time: "20 mins", energy: 3, status: "Upcoming" }
-  ]);
+  const [tasks, setTasks] = useState<Task[]>(() => {
+    const saved = localStorage.getItem("swasthya-tasks");
+    return saved ? JSON.parse(saved) : [
+      { id: "1", task: "Review Mathematics Chapter 4", time: "45 mins", energy: 7, status: "Upcoming" },
+      { id: "2", task: "Practice Chemistry Equations", time: "30 mins", energy: 5, status: "Completed" },
+      { id: "3", task: "Read English Literature", time: "20 mins", energy: 3, status: "Upcoming" }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("swasthya-tasks", JSON.stringify(tasks));
+  }, [tasks]);
 
   // Meditation Timer Logic
   useEffect(() => {
@@ -176,10 +183,10 @@ export default function Dashboard() {
         ...metrics,
         status: "At Risk",
         healthTip: isKeyMissing 
-          ? "Oho! AI Key setup nahi hai. Screen ke bottom right mein 'Fix AI Key' button dhoondo aur setup kar lo!" 
+          ? "Oho! Gemini API Key missing lag raha hai. Server configuration check karein." 
           : "Lagta hai network issue hai, but don't worry, keep analyzing internally!",
         recommendations: isKeyMissing 
-          ? ["Add Gemini API Key", "Click the Fix AI Key button"]
+          ? ["Check API Configuration", "Contact Administrator"]
           : ["Check internet connection", "Take a short manual break"]
       });
     } finally {
@@ -240,17 +247,51 @@ No markdown, just raw JSON.`;
     setTasks(prev => prev.filter(t => t.id !== id));
   };
 
-  const generateStudyTasks = () => {
-    if (!studyTopic.trim()) return;
-    const newTask: Task = {
-      id: Math.random().toString(36).substr(2, 9),
-      task: studyTopic,
-      time: Math.floor(Math.random() * 40 + 20) + " mins",
-      energy: Math.floor(Math.random() * 5 + 3),
-      status: "Upcoming"
-    };
-    setTasks(prev => [newTask, ...prev]);
-    setStudyTopic("");
+  const generateStudyTasks = async () => {
+    if (!studyTopic.trim() || isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      const prompt = `Student wants to study: "${studyTopic}". 
+      Break this into 3 bite-sized, actionable tasks in Hinglish.
+      Return a strict JSON array: [{"task": "...", "time": "...", "energy": 1-10}].
+      No markdown, just raw JSON.`;
+
+      const ai = getGeminiAI();
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json"
+        }
+      });
+
+      if (response.text) {
+        const suggested = JSON.parse(response.text.trim());
+        const newTasks = suggested.map((s: any) => ({
+          id: Math.random().toString(36).substr(2, 9),
+          task: s.task,
+          time: s.time,
+          energy: s.energy,
+          status: "Upcoming"
+        }));
+        setTasks(prev => [...newTasks, ...prev]);
+        setStudyTopic("");
+      }
+    } catch (err) {
+      console.error("Task generation failed:", err);
+      // Fallback
+      const newTask: Task = {
+        id: Math.random().toString(36).substr(2, 9),
+        task: studyTopic,
+        time: "45 mins",
+        energy: 5,
+        status: "Upcoming"
+      };
+      setTasks(prev => [newTask, ...prev]);
+      setStudyTopic("");
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const meditationTips = [
@@ -372,6 +413,7 @@ No markdown, just raw JSON.`;
       </div>
 
         <motion.div 
+          id="dashboard-stats-grid"
           variants={staggerContainer}
           initial="hidden"
           whileInView="visible"
@@ -389,11 +431,12 @@ No markdown, just raw JSON.`;
             stats.map((stat, index) => (
               <motion.div
                 key={index}
+                id={`stat-card-${index}`}
                 variants={fadeInUp}
                 whileHover={hover3D.whileHover}
                 whileTap={hover3D.whileTap}
                 onClick={() => setSelectedHistory(stat.label)}
-                className={`p-6 rounded-3xl shadow-sm border cursor-pointer transition-all ${theme === 'dark' ? 'bg-green-950/20 border-green-900 group' : 'glass bg-white border-green-50'}`}
+                className={`p-6 rounded-3xl shadow-sm border cursor-pointer transition-all ${theme === 'dark' ? 'bg-green-950/20 border-green-900 group hover:border-neon-green/50 hover:shadow-[0_0_20px_rgba(57,255,20,0.1)]' : 'glass bg-white border-green-50 hover:border-neon-green/30 hover:shadow-xl hover:shadow-green-100/20'}`}
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-green-900/40' : 'bg-green-50'} ${stat.color}`}>
@@ -423,6 +466,7 @@ No markdown, just raw JSON.`;
         </motion.div>
 
         <motion.div 
+          id="dashboard-main-grid"
           variants={staggerContainer}
           initial="hidden"
           whileInView="visible"
@@ -431,9 +475,10 @@ No markdown, just raw JSON.`;
         >
           <motion.div 
             variants={fadeInUp}
+            id="dashboard-habits-wrapper"
             className="lg:col-span-2 h-full"
           >
-            <div className={`p-10 rounded-[48px] border relative overflow-hidden group transition-all duration-500 h-full ${theme === 'dark' ? 'bg-[#0a201a]/60 border-green-900/50' : 'bg-white/80 border-green-100 shadow-2xl shadow-green-100/10'} backdrop-blur-xl`}>
+            <div id="dashboard-habits-container" className={`p-10 rounded-[48px] border relative overflow-hidden group transition-all duration-500 h-full ${theme === 'dark' ? 'bg-[#0a201a]/60 border-green-900/50' : 'bg-white/80 border-green-100 shadow-2xl shadow-green-100/10'} backdrop-blur-xl hover:shadow-[0_0_40px_rgba(57,255,20,0.05)]`}>
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-neon-green/40 via-transparent to-transparent" />
               <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-neon-green/5 rounded-full blur-[100px] pointer-events-none" />
               
@@ -478,13 +523,16 @@ No markdown, just raw JSON.`;
 
               <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-neon-green/20">
                 <AnimatePresence mode="popLayout">
-                  {tasks.length > 0 ? tasks.map((item) => (
+                  {tasks.length > 0 ? tasks.map((item, taskIndex) => (
                     <motion.div 
                       key={item.id} 
+                      id={`dashboard-task-item-${taskIndex}`}
                       layout
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.9 }}
+                      whileHover={{ scale: 1.01, x: 5 }}
+                      whileTap={{ scale: 0.99 }}
                       onClick={() => toggleTask(item.id)}
                       className={`flex items-center justify-between p-6 rounded-[32px] border transition-all cursor-pointer group ${
                         item.status === "Completed" 
@@ -539,7 +587,7 @@ No markdown, just raw JSON.`;
               variants={fadeInUp}
               className="flex flex-col gap-8"
             >
-              <div className={`p-8 rounded-[40px] border relative overflow-hidden group min-h-[500px] transition-all flex flex-col ${theme === 'dark' ? 'bg-[#0a201a]/80 border-green-900/50' : 'bg-white/80 border-green-100 shadow-2xl shadow-green-100/20'} backdrop-blur-2xl`}>
+              <div id="dashboard-node-analysis-card" className={`p-8 rounded-[40px] border relative overflow-hidden group min-h-[500px] transition-all flex flex-col ${theme === 'dark' ? 'bg-[#0a201a]/80 border-green-900/50' : 'bg-white/80 border-green-100 shadow-2xl shadow-green-100/20'} backdrop-blur-2xl hover:border-neon-green/30`}>
                {/* Animated Neural Mesh Background */}
                <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
                  <div className="absolute top-0 right-0 w-80 h-80 bg-neon-green rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 animate-pulse" />
@@ -663,7 +711,7 @@ No markdown, just raw JSON.`;
           >
 
 
-            <div className={`p-10 rounded-[48px] border shadow-2xl transition-all backdrop-blur-xl ${theme === 'dark' ? 'bg-[#0a201a]/40 border-green-900/50 hover:border-neon-green/30 shadow-black' : 'bg-white border-green-100 hover:shadow-neon-green/5 shadow-green-100/20'}`}>
+            <div id="dashboard-journal-card" className={`p-10 rounded-[48px] border shadow-2xl transition-all backdrop-blur-xl ${theme === 'dark' ? 'bg-[#0a201a]/40 border-green-900/50 hover:border-neon-green/30 shadow-black' : 'bg-white border-green-100 hover:shadow-neon-green/5 shadow-green-100/20'}`}>
               <div className="flex items-center justify-between mb-10 text-left">
                 <div className="flex flex-col">
                   <h4 className={`text-xl font-display font-black flex items-center gap-3 tracking-tight ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>
