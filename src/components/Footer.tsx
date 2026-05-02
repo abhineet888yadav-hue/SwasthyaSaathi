@@ -86,7 +86,7 @@ export default function Footer() {
           {[
             { 
               title: "Product", 
-              links: ["Features", "Neural Solver", "Study Timer", "Pricing"] 
+              links: ["Features", "Study Timer", "Pricing"] 
             },
             { 
               title: "Company", 

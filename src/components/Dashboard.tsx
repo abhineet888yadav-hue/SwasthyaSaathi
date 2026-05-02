@@ -436,29 +436,36 @@ No markdown, just raw JSON.`;
                 whileHover={hover3D.whileHover}
                 whileTap={hover3D.whileTap}
                 onClick={() => setSelectedHistory(stat.label)}
-                className={`p-6 rounded-3xl shadow-sm border cursor-pointer transition-all ${theme === 'dark' ? 'bg-green-950/20 border-green-900 group hover:border-neon-green/50 hover:shadow-[0_0_20px_rgba(57,255,20,0.1)]' : 'glass bg-white border-green-50 hover:border-neon-green/30 hover:shadow-xl hover:shadow-green-100/20'}`}
+                className={`p-6 rounded-3xl shadow-sm border cursor-pointer transition-all relative overflow-hidden group ${
+                  theme === 'dark' 
+                    ? 'bg-green-950/20 border-green-900 hover:border-neon-green/50 hover:shadow-[0_0_30px_rgba(57,255,20,0.15)] shadow-inner' 
+                    : 'glass bg-white/70 border-green-50 hover:border-neon-green/30 hover:shadow-xl hover:shadow-green-100/20'
+                }`}
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-green-900/40' : 'bg-green-50'} ${stat.color}`}>
-                    <stat.icon className="w-6 h-6" />
+                <div className="absolute inset-0 bg-gradient-to-br from-neon-green/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`p-3 rounded-xl transition-all group-hover:scale-110 group-hover:rotate-6 ${theme === 'dark' ? 'bg-green-900/40' : 'bg-green-50'} ${stat.color}`}>
+                      <stat.icon className="w-6 h-6" />
+                    </div>
+                    <div className="flex flex-col items-end">
+                       <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${theme === 'dark' ? 'text-neon-green' : 'text-green-700'}`}>{stat.trend}</span>
+                       <span className={`text-[7px] font-bold uppercase opacity-30 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Real-time Node</span>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end">
-                     <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${theme === 'dark' ? 'text-neon-green' : 'text-green-700'}`}>{stat.trend}</span>
-                     <span className={`text-[7px] font-bold uppercase opacity-30 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Real-time Node</span>
+                  <div className={`text-4xl font-display font-bold mb-1 group-hover:scale-105 transition-transform origin-left ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>{stat.value}</div>
+                  <div className={`text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center justify-between ${theme === 'dark' ? 'text-gray-500' : 'text-green-800/40'}`}>
+                    {stat.label}
+                    <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                   </div>
-                </div>
-                <div className={`text-4xl font-display font-bold mb-1 group-hover:scale-105 transition-transform origin-left ${theme === 'dark' ? 'text-white' : 'text-green-950'}`}>{stat.value}</div>
-                <div className={`text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center justify-between ${theme === 'dark' ? 'text-gray-500' : 'text-green-800/40'}`}>
-                  {stat.label}
-                  <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-                </div>
-                
-                <div className={`w-full h-1.5 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-green-900/10' : 'bg-green-50'}`}>
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${stat.progress}%` }}
-                    className={`h-full bg-gradient-to-r from-neon-green/40 to-neon-green rounded-full shadow-[0_0_10px_#39FF14]`}
-                  />
+                  
+                  <div className={`w-full h-1.5 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-green-900/30' : 'bg-green-50'}`}>
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${stat.progress}%` }}
+                      className={`h-full bg-gradient-to-r from-neon-green/60 to-neon-green rounded-full shadow-[0_0_10px_#39FF14]`}
+                    />
+                  </div>
                 </div>
               </motion.div>
             ))

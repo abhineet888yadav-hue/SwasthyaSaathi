@@ -43,7 +43,7 @@ export default function Testimonials() {
             className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border mb-6 text-[10px] font-black uppercase tracking-[0.3em] ${theme === 'dark' ? 'bg-green-900/40 border-green-800 text-neon-green shadow-lg shadow-green-950/50' : 'bg-green-100 border-green-200 text-green-700 shadow-sm'}`}
           >
             <Heart className="w-3 h-3 fill-current" />
-            Neural Community
+            Student Success
           </motion.div>
           <motion.h2
              initial={{ opacity: 0, y: 20 }}

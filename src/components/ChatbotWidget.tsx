@@ -305,7 +305,7 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
 
     const callGemini = async (modelName: string): Promise<any> => {
       const ai = getGeminiAI();
-      return await ai.models.generateContent({
+      const response = await ai.models.generateContent({
         model: modelName,
         contents: finalContents,
         config: {
@@ -313,6 +313,7 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
           thinkingConfig: isDeepThinking ? { thinkingLevel: ThinkingLevel.HIGH } : undefined
         }
       });
+      return response;
     };
 
     try {
@@ -331,19 +332,21 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
     } catch (err: any) {
       console.error("Chat error:", err);
       
-      let userFriendlyError = "SwasthyaSaathi thoda thak gaya hai. Ek minute baad phir se try karein!";
+      let userFriendlyError = "SwasthyaSaathi thoda thak gaya hai. Ek minute baad phir se try karein! " + (err.message || "");
       const msg = err?.message?.toLowerCase() || "";
       
       if (msg.includes("429") || msg.includes("quota")) {
         userFriendlyError = "Bahut saare students ek saath sawal pooch rahe hain! SwasthyaSaathi thoda overwhelmed hai. (Quota Limit)";
       } else if (msg.includes("safety") || msg.includes("blocked")) {
         userFriendlyError = "Hmm, ye topic safety guidelines ke khilaaf hai. Chaliye padhai ya health ki baat karte hain!";
-      } else if (msg.includes("api key") || msg.includes("unauthorized") || msg.includes("configured") || msg.includes("missing") || msg.includes("ai key")) {
-        userFriendlyError = "Server configuration mein kuch kami hai (API Key): " + err.message;
+      } else if (msg.includes("api key") || msg.includes("unauthorized") || msg.includes("configured") || msg.includes("missing") || msg.includes("ai key") || msg.includes("401") || msg.includes("403")) {
+        userFriendlyError = "Backend Key setup issue. Please check API configuration or credits.";
       } else if (msg.includes("network") || msg.includes("fetch") || msg.includes("offline")) {
         userFriendlyError = "Internet connection check karein, main aap tak nahi pahunch paa raha hoon!";
       } else if (msg.includes("500") || msg.includes("503")) {
         userFriendlyError = "Gemini servers thodi der ke liye so gaye hain. Refresh karke dekhein!";
+      } else if (msg.includes("model not found") || msg.includes("404")) {
+        userFriendlyError = "Kshama karein, main abhi available nahi hoon (Model mismatch). Wait karein!";
       }
 
       setError(userFriendlyError);
@@ -805,30 +808,20 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
                 </div>
               )}
               
-              {/* Sticky Disclaimer */}
-              <div className={`mt-4 p-3 rounded-2xl border flex items-start gap-3 ${theme === 'dark' ? 'bg-red-950/20 border-red-900/50 text-red-200' : 'bg-red-50 border-red-100 text-red-900'}`}>
-                <AlertCircle className="w-5 h-5 shrink-0 text-red-500" />
-                <div className="space-y-1">
-                  <p className="text-[10px] font-bold leading-tight uppercase tracking-wider">Medical Disclaimer</p>
-                  <p className="text-[9px] leading-relaxed opacity-80 font-medium">
-                    SwasthyaSaathi is an AI guide, not a medical professional. If you have a real emergency (Chest Pain, Breathing difficulty), call <strong>102</strong> or <strong>108</strong> immediately.
-                  </p>
-                </div>
-              </div>
             </div>
 
             {/* Input and Controls */}
-            <div className={`p-4 backdrop-blur-md border-t shrink-0 transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0a201a] border-green-900' : 'bg-white/80 border-green-100'}`}>
-              <div className="flex items-center gap-2 mb-3 h-8">
+            <div className={`p-3 backdrop-blur-md border-t shrink-0 transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0a201a] border-green-900' : 'bg-white/80 border-green-100'}`}>
+              <div className="flex items-center gap-2 mb-2 h-7">
                 <button 
                   onClick={() => handleSend("Tell me some healthy habits for students.")}
-                  className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all truncate max-w-[150px] ${theme === 'dark' ? 'bg-green-900/20 border-green-800 text-green-400 hover:border-green-600' : 'bg-green-50 border-green-100 text-green-800 hover:border-green-300'}`}
+                  className={`px-3 py-0.5 rounded-full text-[9px] font-bold border transition-all truncate max-w-[130px] ${theme === 'dark' ? 'bg-green-900/20 border-green-800 text-green-400 hover:border-green-600' : 'bg-green-50 border-green-100 text-green-800 hover:border-green-300'}`}
                 >
                   Healthy Habits?
                 </button>
                 <button 
                   onClick={() => window.open('tel:102')}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-colors shadow-lg shadow-red-900/20 animate-pulse"
+                  className="flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-black uppercase tracking-widest hover:bg-red-700 transition-colors shadow-lg shadow-red-900/20 animate-pulse"
                 >
                   <Activity className="w-3 h-3" />
                   Life SOS (102)
@@ -837,7 +830,7 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
               
               {/* Quick Action Suggestions */}
               {!isLoading && messages.length < 4 && (
-                <div className="flex gap-2 overflow-x-auto pb-4 mb-1 no-scrollbar scrollbar-hide">
+                <div className="flex gap-2 overflow-x-auto pb-2 mb-1 no-scrollbar scrollbar-hide">
                   {[
                     { label: "Study Tips", icon: Sparkles, text: "Mujhe aaj ke liye productive study tips chahiye." },
                     { label: "Doubt Solver", icon: BrainCircuit, text: "Explain a complex concept using a simple analogy." },
@@ -908,7 +901,7 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => fileInputRef.current?.click()}
-                      className={`p-3 rounded-2xl transition-all shadow-sm border group/btn ${theme === 'dark' ? 'bg-green-950/40 border-green-900 text-green-400 hover:border-neon-green/30' : 'bg-green-50/50 border-green-100 text-green-600 hover:border-neon-green/30'}`}
+                      className={`p-2.5 rounded-2xl transition-all shadow-sm border group/btn ${theme === 'dark' ? 'bg-green-950/40 border-green-900 text-green-400 hover:border-neon-green/30' : 'bg-green-50/50 border-green-100 text-green-600 hover:border-neon-green/30'}`}
                       title="Upload notes/reports for scanning"
                     >
                       <ImageIcon className="w-5 h-5 group-hover/btn:text-neon-green transition-colors" />
@@ -927,7 +920,7 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
                       animate={isListening ? { scale: [1, 1.1, 1], boxShadow: ['0 0 0px #39FF14', '0 0 15px #39FF14', '0 0 0px #39FF14'] } : {}}
                       transition={{ repeat: Infinity, duration: 1.5 }}
                       onClick={toggleListening}
-                      className={`p-3 rounded-2xl transition-all shadow-sm border ${isListening ? 'bg-neon-green text-white border-neon-green' : theme === 'dark' ? 'bg-green-950/40 border-green-900 text-green-400 hover:border-neon-green/30' : 'bg-green-50/50 border-green-100 text-green-600 hover:border-neon-green/30'}`}
+                      className={`p-2.5 rounded-2xl transition-all shadow-sm border ${isListening ? 'bg-neon-green text-white border-neon-green' : theme === 'dark' ? 'bg-green-950/40 border-green-900 text-green-400 hover:border-neon-green/30' : 'bg-green-50/50 border-green-100 text-green-600 hover:border-neon-green/30'}`}
                       title={isListening ? "Stop listening" : "Voice input"}
                     >
                       {isListening ? <MicOff className="w-5 h-5" /> : <Mic className={`w-5 h-5 ${isListening ? '' : 'hover:text-neon-green transition-colors'}`} />}
@@ -966,7 +959,7 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
                         }
                       }}
                       placeholder={isListening ? "Listening..." : selectedImage ? "Analyzing your document..." : "Doubt clear karein? Stress manage karein?"}
-                      className={`w-full p-4 pr-14 rounded-[28px] text-sm resize-none focus:outline-none focus:ring-4 focus:ring-neon-green/10 transition-all min-h-[56px] max-h-[150px] shadow-inner font-medium placeholder:italic ${theme === 'dark' ? 'bg-green-950/40 border-green-900 text-white placeholder:text-gray-600' : 'bg-green-50/40 border-green-100 text-green-950 placeholder:text-green-800/30'}`}
+                      className={`w-full p-3 pr-12 rounded-[24px] text-sm resize-none focus:outline-none focus:ring-4 focus:ring-neon-green/10 transition-all min-h-[48px] max-h-[120px] shadow-inner font-medium placeholder:italic ${theme === 'dark' ? 'bg-green-950/40 border-green-900 text-white placeholder:text-gray-600' : 'bg-green-50/40 border-green-100 text-green-950 placeholder:text-green-800/30'}`}
                     />
                     
                     <motion.button
@@ -980,10 +973,10 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
                     </motion.button>
                   </div>
                 </div>
-                <div className="mt-2 text-[9px] text-green-800/40 text-center flex items-center justify-center gap-3 font-bold uppercase tracking-wider">
-                  <span className="flex items-center gap-1"><Sparkles className="w-3 h-3 text-neon-green" /> Vision AI</span>
-                  <span className="flex items-center gap-1"><BrainCircuit className="w-3 h-3 text-neon-green" /> Reasoning</span>
-                  <span className="flex items-center gap-1"><Activity className="w-3 h-3 text-neon-green" /> Speakable</span>
+                <div className="mt-1 text-[8px] text-green-800/40 text-center flex items-center justify-center gap-2 font-bold uppercase tracking-wider">
+                  <span className="flex items-center gap-1"><Sparkles className="w-2.5 h-2.5 text-neon-green" /> Vision</span>
+                  <span className="flex items-center gap-1"><BrainCircuit className="w-2.5 h-2.5 text-neon-green" /> Logic</span>
+                  <span className="flex items-center gap-1"><Activity className="w-2.5 h-2.5 text-neon-green" /> Voice</span>
                 </div>
               </div>
             </div>
@@ -992,19 +985,36 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
       </AnimatePresence>
 
       <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={{ scale: 1.1, rotate: 5 }}
+        whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-16 h-16 bg-green-800 rounded-[24px] flex items-center justify-center shadow-2xl relative group overflow-hidden border-2 border-neon-green/20"
+        id="chatbot-trigger-btn"
+        className={`w-16 h-16 rounded-[24px] flex items-center justify-center shadow-[0_10px_30px_rgba(34,197,94,0.3)] relative group overflow-hidden border-2 transition-all ${theme === 'dark' ? 'bg-green-950 border-green-800 hover:border-neon-green/50' : 'bg-green-800 border-green-700 hover:border-neon-green/50'}`}
       >
         <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
+          animate={{ 
+            rotate: isOpen ? 90 : 0,
+            scale: isOpen ? 0.8 : 1
+          }}
           className="relative z-10"
         >
           {isOpen ? <X className="w-8 h-8 text-white" /> : <MessageCircle className="w-8 h-8 text-white" />}
         </motion.div>
-        <div className="absolute inset-0 bg-gradient-to-tr from-green-900 to-green-700 opacity-50" />
-        <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-neon-green rounded-tl-xl border-2 border-green-800 animate-pulse" />
+        <div 
+          id="chatbot-trigger-bg"
+          className="absolute inset-0 bg-gradient-to-tr from-green-950 via-green-800 to-neon-green opacity-90 group-hover:opacity-100 transition-all duration-500 group-hover:scale-110" 
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(57,255,20,0.2),transparent_70%)] group-hover:animate-pulse" />
+        <motion.div 
+          animate={{ 
+            boxShadow: ["0 0 0px rgba(57,255,20,0)", "0 0 20px rgba(57,255,20,0.4)", "0 0 0px rgba(57,255,20,0)"],
+          }}
+          transition={{ repeat: Infinity, duration: 2 }}
+          className="absolute inset-0 rounded-[24px]"
+        />
+        <div id="chatbot-trigger-status" className="absolute -bottom-1 -right-1 w-6 h-6 bg-neon-green rounded-tl-xl border-2 border-green-800 z-20">
+          <div className="absolute inset-0 bg-white/20 animate-ping rounded-tl-xl" />
+        </div>
       </motion.button>
     </div>
   );

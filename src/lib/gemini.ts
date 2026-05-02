@@ -3,16 +3,35 @@ import { GoogleGenAI } from "@google/genai";
 let genAI: GoogleGenAI | null = null;
 
 export function getGeminiAI() {
-  if (!genAI) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      // In development on some platforms, this might be missing initially.
-      // The frontend build system typically injects it.
-      console.warn("GEMINI_API_KEY is not defined in the environment.");
-    }
-    genAI = new GoogleGenAI({ apiKey: apiKey || "" });
-  }
-  return genAI;
+  return {
+    models: {
+      generateContent: async (params: { model: string; contents: any; config?: any }) => {
+        try {
+          const response = await fetch("/api/ai", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(params),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: "AI error" }));
+            throw new Error(errorData.error || errorData.details || "AI failure");
+          }
+
+          const data = await response.json();
+          return {
+            text: data.text || "",
+            candidates: data.candidates,
+          };
+        } catch (error: any) {
+          console.error("Gemini Error:", error);
+          throw error;
+        }
+      },
+    },
+  } as any;
 }
 
 /**

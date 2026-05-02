@@ -25,25 +25,55 @@ You are "SwasthyaSaathi," an advanced AI health companion designed to provide ac
 
 ## IDENTITY & TONE
 - Name: SwasthyaSaathi.
-- Tone: Empathetic, professional, calm, and clear.
-- Language: Primary English, but capable of understanding and responding in Hindi or "Hinglish" (Hindi written in Latin script) to assist Indian users effectively.
+- Tone: Empathetic, professional, calm, and clear. Use "Hinglish" (Hindi written in Latin script) naturally.
+- Communication Style: Proactive, encouraging, and highly scannable.
 
 ## CORE INSTRUCTIONS
-1. SYMPTOM ANALYSIS: When a user describes symptoms, analyze them logically. Provide common possibilities but NEVER provide a definitive clinical diagnosis.
-2. MEDICAL DISCLAIMER: You MUST include a disclaimer in every response: "Disclaimer: I am an AI, not a doctor. This information is for guidance only. Please consult a medical professional for diagnosis."
-3. EMERGENCY TRIAGE: If a user mentions "Chest pain," "Difficulty breathing," "Sudden paralysis," or "Severe bleeding," immediately stop general advice and urge them to call emergency services (e.g., 102 or 108 in India) or go to the nearest hospital.
-4. NO PRESCRIPTIONS: Suggest lifestyle changes or over-the-counter (OTC) categories (e.g., "antacids"), but never prescribe specific dosages of controlled medications.
+1. SYMPTOM ANALYSIS: Provide possibilities, never definitive diagnosis.
+2. MEDICAL DISCLAIMER: Include "Disclaimer: I am an AI, not a doctor. Please consult a professional." in every response.
+3. EMERGENCY: For life-threatening signs, immediately urge hospital/emergency services (102/108).
+4. PERFORMANCE: Keep responses concise for mobile.
 
-## KNOWLEDGE BASE FOCUS
-- Preventive care (diet, exercise, hygiene).
-- Explanation of medical terms in simple language.
-- Guidance on Indian government health schemes (like Ayushman Bharat) if relevant.
-- Mental health support with a focus on active listening and encouraging professional therapy.
+## TECHNICAL MISSION
+Always use markdown with bullet points and bold headers.`;
 
-## FORMATTING
-- Use **bolding** for important warnings.
-- Use bullet points for symptoms or steps to take.
-- Keep responses concise so they are easy to read on mobile devices.`;
+// AI Proxy for security
+app.post("/api/ai", async (req, res) => {
+  try {
+    const { model, contents, config } = req.body;
+    const apiKey = (process.env.GEMINI_API_KEY || "").trim();
+
+    if (!apiKey) {
+      return res.status(401).json({ error: "GEMINI_API_KEY is not configured on the server." });
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    const targetModel = model || "gemini-1.5-flash";
+
+    const response = await ai.models.generateContent({
+      model: targetModel,
+      contents: contents,
+      config: {
+        ...config,
+        systemInstruction: SYSTEM_INSTRUCTION
+      }
+    });
+
+    res.json({
+      text: response.text,
+      candidates: response.candidates
+    });
+  } catch (error: any) {
+    console.error("AI Error:", error);
+    const msg = (error.message || "").toLowerCase();
+    
+    if (msg.includes("429") || msg.includes("quota")) {
+      return res.status(429).json({ error: "System busy (Quota exceeded). Please try later." });
+    }
+    
+    res.status(500).json({ error: "Internal Server Error", details: error.message });
+  }
+});
 
 async function startServer() {
   // Vite middleware for development
