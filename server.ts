@@ -29,9 +29,9 @@ app.post("/api/generate-mindmap", async (req, res) => {
       return res.status(400).json({ error: "Topic is required" });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) {
-      return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+      return res.status(401).json({ error: "GEMINI_API_KEY is not configured on the server." });
     }
 
     const genAI = new GoogleGenAI({ apiKey });
@@ -43,8 +43,7 @@ app.post("/api/generate-mindmap", async (req, res) => {
     Use professional yet engaging academic terminology.
     Return the response strictly as valid JSON.`;
 
-    // Using the recommended pattern from the gemini-api skill
-    const result = await (genAI as any).models.generateContent({
+    const result = await genAI.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: {
@@ -74,16 +73,12 @@ app.post("/api/generate-mindmap", async (req, res) => {
     });
 
     const text = result.text || "";
-    
-    // Robust JSON extraction
     const cleanJson = text.replace(/```json|```/gi, "").trim();
-    const data = JSON.parse(cleanJson);
-    
-    res.json(data);
+    res.json(JSON.parse(cleanJson || "{}"));
   } catch (error: any) {
-    console.error("Gemini Server Error:", error);
+    console.error("Gemini Mindmap Error:", error);
     res.status(500).json({ 
-      error: "Internal Server Error during mind map generation",
+      error: "Mind map generation failed",
       details: error.message 
     });
   }
@@ -98,22 +93,22 @@ app.post("/api/chat", async (req, res) => {
       return res.status(400).json({ error: "Contents array is required" });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) {
-      return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+      return res.status(401).json({ error: "GEMINI_API_KEY is not configured on the server." });
     }
 
     const genAI = new GoogleGenAI({ apiKey });
 
     // Handle multimodal data if present in parts
-    const result = await (genAI as any).models.generateContent({
+    const result = await genAI.models.generateContent({
       model: "gemini-3-flash-preview",
       contents,
       config: {
         systemInstruction: systemInstruction || "You are an expert AI mentor named SwasthyaSaathi.",
         maxOutputTokens: 2048,
         temperature: 0.7,
-        thinkingConfig: thinkingConfig || undefined
+        thinkingConfig: thinkingConfig ? thinkingConfig : undefined
       },
     });
 
@@ -121,7 +116,7 @@ app.post("/api/chat", async (req, res) => {
   } catch (error: any) {
     console.error("Chat Server Error:", error);
     res.status(500).json({ 
-      error: "Internal Server Error during chat generation",
+      error: "Chat generation failed",
       details: error.message 
     });
   }
@@ -132,14 +127,14 @@ app.post("/api/ai", async (req, res) => {
   try {
     const { model, contents, config } = req.body;
     
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) {
-      return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+      return res.status(401).json({ error: "GEMINI_API_KEY is not configured on the server." });
     }
 
     const genAI = new GoogleGenAI({ apiKey });
 
-    const result = await (genAI as any).models.generateContent({
+    const result = await genAI.models.generateContent({
       model: model || "gemini-3-flash-preview",
       contents,
       config: config || {}

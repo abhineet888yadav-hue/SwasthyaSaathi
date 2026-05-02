@@ -166,9 +166,9 @@ End with 'Need more detail? Just ask!' only if appropriate for the flow.`
     } catch (error: any) {
       console.error("Chat error:", error);
       const msg = error?.message || "";
-      let errorContent = "I encountered an error. Please try again.";
+      let errorContent = msg || "I encountered an error. Please try again.";
       if (msg.includes("API_KEY") || msg.includes("api_key_missing")) {
-        errorContent = "⚠️ AI Key setup nahi hai. Screen ke bottom right mein 'Fix AI Key' button dhoondo aur setup kar lo!";
+        errorContent = "⚠️ AI Key setup nahi hai. Server admin se contact karein!";
       } else if (msg.includes("quota")) {
         errorContent = "⚠️ AI Quota exceeded. Please try again later.";
       }
@@ -471,11 +471,8 @@ function StudyPlanCard({ feature, index }: { feature: any, index: number }) {
       setPlan(response.text || "Failed to generate plan.");
     } catch (error: any) {
       console.error("Plan generation error:", error);
-      const msg = error?.message || "";
-      const isKeyError = msg.includes("key") || msg.includes("401") || msg.includes("missing") || msg.includes("API_KEY");
-      setPlan(isKeyError 
-        ? "⚠️ AI Key setup nahi hai. Screen ke bottom right mein 'Fix AI Key' button dhoondo aur setup kar lo!"
-        : "Sorry, I encountered an error with Google Studio AI generating your study plan. Please try again later.");
+      const msg = error?.message || "I encountered an error generating your study plan.";
+      setPlan("⚠️ " + msg);
     } finally {
       setIsLoading(false);
     }
@@ -601,7 +598,7 @@ function RevisionCard({ feature, index }: { feature: any, index: number }) {
       if (msg.includes("API_KEY") || msg.includes("key") || msg.includes("missing")) {
         setError("⚠️ AI Key missing. Click 'Fix AI Key' button at bottom right!");
       } else {
-        setError("I encountered an error. Please try again.");
+        setError(error?.message || "I encountered an error. Please try again.");
       }
     } finally {
       setIsLoading(false);

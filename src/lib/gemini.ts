@@ -18,18 +18,20 @@ export function getGeminiAI() {
           });
 
           if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.details || errorData.error || "AI Proxy Error");
+            const errorData = await response.json().catch(() => ({ error: "Unknown server error" }));
+            const errorMsg = errorData.details || errorData.error || "AI Proxy Error";
+            throw new Error(errorMsg);
           }
 
           const data = await response.json();
           // Mock the GenerateContentResponse shape
+          // Components expect .text property
           return {
-            text: data.text,
-            get functionCalls() { return undefined; } // Add if needed later
+            text: data.text || "",
+            get functionCalls() { return undefined; }
           };
         } catch (error: any) {
-          console.error("Gemini Proxy Fetch Error:", error);
+          console.error("Gemini Proxy Error:", error);
           throw error;
         }
       },
