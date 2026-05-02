@@ -3,24 +3,38 @@ import { GoogleGenAI } from "@google/genai";
 let genAI: GoogleGenAI | null = null;
 
 export function getGeminiAI() {
-  if (genAI) return genAI;
+  // Return a mock object that matches the @google/genai SDK structure
+  // but redirects calls to our server-side proxy.
+  return {
+    models: {
+      generateContent: async (params: { model: string; contents: any; config?: any }) => {
+        try {
+          const response = await fetch("/api/ai", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(params),
+          });
 
-  // 1. Check environment variables (Prioritize process.env.GEMINI_API_KEY for this platform)
-  let apiKey: string | undefined = process.env.GEMINI_API_KEY;
-  
-  // 2. Check localStorage (User provided fallback)
-  if (!apiKey && typeof window !== 'undefined') {
-    apiKey = localStorage.getItem('SW_GEMINI_KEY') || undefined;
-  }
-  
-  if (!apiKey) {
-    const errorMsg = "Gemini API Key missing! Please set GEMINI_API_KEY in environment or provide it in settings.";
-    console.warn(errorMsg);
-    throw new Error("API_KEY_MISSING");
-  }
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.details || errorData.error || "AI Proxy Error");
+          }
 
-  genAI = new GoogleGenAI({ apiKey });
-  return genAI;
+          const data = await response.json();
+          // Mock the GenerateContentResponse shape
+          return {
+            text: data.text,
+            get functionCalls() { return undefined; } // Add if needed later
+          };
+        } catch (error: any) {
+          console.error("Gemini Proxy Fetch Error:", error);
+          throw error;
+        }
+      },
+    }
+  } as any;
 }
 
 /**

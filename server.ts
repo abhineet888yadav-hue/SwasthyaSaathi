@@ -43,8 +43,9 @@ app.post("/api/generate-mindmap", async (req, res) => {
     Use professional yet engaging academic terminology.
     Return the response strictly as valid JSON.`;
 
+    // Using the recommended pattern from the gemini-api skill
     const result = await (genAI as any).models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-3-flash-preview",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: {
         responseMimeType: "application/json",
@@ -106,14 +107,14 @@ app.post("/api/chat", async (req, res) => {
 
     // Handle multimodal data if present in parts
     const result = await (genAI as any).models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-3-flash-preview",
       contents,
       config: {
         systemInstruction: systemInstruction || "You are an expert AI mentor named SwasthyaSaathi.",
         maxOutputTokens: 2048,
         temperature: 0.7,
+        thinkingConfig: thinkingConfig || undefined
       },
-      // Note: thinkingConfig is only supported in specific models/versions
     });
 
     res.json({ text: result.text || "" });
@@ -121,6 +122,34 @@ app.post("/api/chat", async (req, res) => {
     console.error("Chat Server Error:", error);
     res.status(500).json({ 
       error: "Internal Server Error during chat generation",
+      details: error.message 
+    });
+  }
+});
+
+// Generic AI Endpoint
+app.post("/api/ai", async (req, res) => {
+  try {
+    const { model, contents, config } = req.body;
+    
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+    }
+
+    const genAI = new GoogleGenAI({ apiKey });
+
+    const result = await (genAI as any).models.generateContent({
+      model: model || "gemini-3-flash-preview",
+      contents,
+      config: config || {}
+    });
+
+    res.json({ text: result.text || "" });
+  } catch (error: any) {
+    console.error("AI Proxy Error:", error);
+    res.status(500).json({ 
+      error: "AI Generation failed",
       details: error.message 
     });
   }

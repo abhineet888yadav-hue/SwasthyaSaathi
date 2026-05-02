@@ -332,19 +332,19 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
     } catch (err: any) {
       console.error("Chat error:", err);
       
-      let userFriendlyError = "SwasthyaSaathi is taking a quick break. Please try again in a moment!";
+      let userFriendlyError = "SwasthyaSaathi thoda thak gaya hai. Ek minute baad phir se try karein!";
       const msg = err?.message?.toLowerCase() || "";
       
       if (msg.includes("429") || msg.includes("quota")) {
-        userFriendlyError = "SwasthyaSaathi is a bit overwhelmed with requests right now! Please wait a moment. (Quota Limit)";
+        userFriendlyError = "Bahut saare students ek saath sawal pooch rahe hain! SwasthyaSaathi thoda overwhelmed hai. (Quota Limit)";
       } else if (msg.includes("safety") || msg.includes("blocked")) {
-        userFriendlyError = "I can't answer that because of safety guidelines. Let's talk about your study or health instead!";
-      } else if (msg.includes("api key") || msg.includes("unauthorized") || msg.includes("missing") || msg.includes("api_key_missing")) {
-        userFriendlyError = "Oho! Gemini API Key missing lag raha hai. Mobile screen ke bottom right mein 'Fix AI Key' button hai, wahan setup kar lo!";
+        userFriendlyError = "Hmm, ye topic safety guidelines ke khilaaf hai. Chaliye padhai ya health ki baat karte hain!";
+      } else if (msg.includes("api key") || msg.includes("unauthorized") || msg.includes("configured") || msg.includes("missing")) {
+        userFriendlyError = "Server configuration mein kuch kami hai. Please admin se contact karein ya thodi der mein try karein.";
       } else if (msg.includes("network") || msg.includes("fetch") || msg.includes("offline")) {
-        userFriendlyError = "I can't reach the internet! Please check your connection.";
+        userFriendlyError = "Internet connection check karein, main aap tak nahi pahunch paa raha hoon!";
       } else if (msg.includes("500") || msg.includes("503")) {
-        userFriendlyError = "The Gemini servers are currently having a nap. Try again in a few seconds!";
+        userFriendlyError = "Gemini servers thodi der ke liye so gaye hain. Refresh karke dekhein!";
       }
 
       setError(userFriendlyError);

@@ -108,7 +108,7 @@ function MindMapInner() {
     } catch (err: any) {
       console.error("Mind map generation error:", err);
       setError({ 
-        message: "Kuch gadbad ho gayi! " + (err.message || "Please try again later."), 
+        message: "Ofo! Kuch gadbad ho gayi. " + (err.message || "Please try again later."), 
         type: 'error' 
       });
     } finally {
