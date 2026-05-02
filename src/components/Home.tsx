@@ -3,7 +3,7 @@ import Hero from "./Hero";
 import FeatureCards from "./FeatureCards";
 import HowItWorks from "./HowItWorks";
 import Dashboard from "./Dashboard";
-import ImageGenerator from "./ImageGenerator";
+import MindMapGenerator from "./MindMapGenerator";
 import FAQ from "./FAQ";
 import Pricing from "./Pricing";
 import Testimonials from "./Testimonials";
@@ -40,7 +40,7 @@ export default function Home() {
       <Hero />
       <FeatureCards />
       <HowItWorks />
-      <ImageGenerator />
+      <MindMapGenerator />
       <Dashboard />
       <Pricing />
       <Testimonials />
