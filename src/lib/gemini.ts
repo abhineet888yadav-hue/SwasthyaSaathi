@@ -5,15 +5,8 @@ let genAI: GoogleGenAI | null = null;
 export function getGeminiAI() {
   if (genAI) return genAI;
 
-  let apiKey: string | undefined = undefined;
-  
-  // Safe check for process.env
-  if (typeof process !== 'undefined' && process.env) {
-    apiKey = process.env.GEMINI_API_KEY;
-  }
-  
-  // Fallbacks: Vite env variables, then hardcoded key
-  apiKey = apiKey || import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyCDY52-qmmKrDWOzkDZ6mcpndt4SDaj5NA";
+  // 1. Check environment variables (Prioritize process.env.GEMINI_API_KEY for this platform)
+  let apiKey: string | undefined = process.env.GEMINI_API_KEY;
   
   // 2. Check localStorage (User provided fallback)
   if (!apiKey && typeof window !== 'undefined') {

@@ -165,10 +165,10 @@ End with 'Need more detail? Just ask!' only if appropriate for the flow.`
       setMessages(prev => [...prev, { role: "model", content: response.text || "error", provider: "gemini" }]);
     } catch (error: any) {
       console.error("Chat error:", error);
-      const msg = (error?.message || "").toLowerCase();
-      let errorContent = `I encountered an error: ${msg}. Please try again.`;
-      if (msg.includes("api key") || msg.includes("api_key") || msg.includes("api_key_missing") || msg.includes("unauthorized") || msg.includes("403") || msg.includes("401")) {
-        errorContent = "⚠️ API Key Invalid or Missing. Please ensure the key AIzaSyCDY52-qmmKrDWOzkDZ6mcpndt4SDaj5NA is valid.";
+      const msg = error?.message || "";
+      let errorContent = "I encountered an error. Please try again.";
+      if (msg.includes("API_KEY") || msg.includes("api_key_missing")) {
+        errorContent = "⚠️ AI Key setup nahi hai. Screen ke bottom right mein 'Fix AI Key' button dhoondo aur setup kar lo!";
       } else if (msg.includes("quota")) {
         errorContent = "⚠️ AI Quota exceeded. Please try again later.";
       }
@@ -474,8 +474,8 @@ function StudyPlanCard({ feature, index }: { feature: any, index: number }) {
       const msg = error?.message || "";
       const isKeyError = msg.includes("key") || msg.includes("401") || msg.includes("missing") || msg.includes("API_KEY");
       setPlan(isKeyError 
-        ? "⚠️ API Key Invalid or Missing. Please ensure it is valid."
-        : `Sorry, I encountered an error: ${msg}. Please try again later.`);
+        ? "⚠️ AI Key setup nahi hai. Screen ke bottom right mein 'Fix AI Key' button dhoondo aur setup kar lo!"
+        : "Sorry, I encountered an error with Google Studio AI generating your study plan. Please try again later.");
     } finally {
       setIsLoading(false);
     }
@@ -599,9 +599,9 @@ function RevisionCard({ feature, index }: { feature: any, index: number }) {
       console.error("Revision error:", error);
       const msg = error?.message || "";
       if (msg.includes("API_KEY") || msg.includes("key") || msg.includes("missing")) {
-        setError("⚠️ API Key invalid or missing.");
+        setError("⚠️ AI Key missing. Click 'Fix AI Key' button at bottom right!");
       } else {
-        setError(`I encountered an error: ${msg}. Please try again.`);
+        setError("I encountered an error. Please try again.");
       }
     } finally {
       setIsLoading(false);

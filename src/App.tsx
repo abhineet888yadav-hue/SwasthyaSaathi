@@ -38,7 +38,7 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 }
 
 import NeuralLoader from "./components/NeuralLoader";
-
+import GeminiKeyModal from "./components/GeminiKeyModal";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./lib/firebase";
 
@@ -208,6 +208,7 @@ function MainContent() {
       </main>
       <Footer />
       {!isUnverified && <ChatbotWidget />}
+      {!isUnverified && <GeminiKeyModal />}
     </motion.div>
   );
 }

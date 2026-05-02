@@ -334,15 +334,15 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
     } catch (err: any) {
       console.error("Chat error:", err);
       
+      let userFriendlyError = "SwasthyaSaathi is taking a quick break. Please try again in a moment!";
       const msg = err?.message?.toLowerCase() || "";
-      let userFriendlyError = `SwasthyaSaathi is taking a quick break. Error: ${msg}`;
       
       if (msg.includes("429") || msg.includes("quota")) {
         userFriendlyError = "SwasthyaSaathi is a bit overwhelmed with requests right now! Please wait a moment. (Quota Limit)";
       } else if (msg.includes("safety") || msg.includes("blocked")) {
         userFriendlyError = "I can't answer that because of safety guidelines. Let's talk about your study or health instead!";
       } else if (msg.includes("api key") || msg.includes("unauthorized") || msg.includes("missing") || msg.includes("api_key_missing")) {
-        userFriendlyError = "Oho! Gemini API Key invalid lag raha hai. Vercel environment variables check karein.";
+        userFriendlyError = "Oho! Gemini API Key missing lag raha hai. Mobile screen ke bottom right mein 'Fix AI Key' button hai, wahan setup kar lo!";
       } else if (msg.includes("network") || msg.includes("fetch") || msg.includes("offline")) {
         userFriendlyError = "I can't reach the internet! Please check your connection.";
       } else if (msg.includes("500") || msg.includes("503")) {

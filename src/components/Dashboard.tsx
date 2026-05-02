@@ -176,10 +176,10 @@ export default function Dashboard() {
         ...metrics,
         status: "At Risk",
         healthTip: isKeyMissing 
-          ? "Oho! API Key invalid lag rahi hai. Please verify the AIzaSyCDY52-qmmKrDWOzkDZ6mcpndt4SDaj5NA key." 
+          ? "Oho! AI Key setup nahi hai. Screen ke bottom right mein 'Fix AI Key' button dhoondo aur setup kar lo!" 
           : "Lagta hai network issue hai, but don't worry, keep analyzing internally!",
         recommendations: isKeyMissing 
-          ? ["Check Gemini API Key validity"]
+          ? ["Add Gemini API Key", "Click the Fix AI Key button"]
           : ["Check internet connection", "Take a short manual break"]
       });
     } finally {
