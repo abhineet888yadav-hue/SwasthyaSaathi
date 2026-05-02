@@ -86,55 +86,19 @@ function MindMapInner() {
     setError(null);
 
     try {
-      const ai = getGeminiAI();
-      const prompt = `Topic: "${topic}". 
-      You are an expert academic mentor. Create a comprehensive, well-structured hierarchical mind map for this topic. 
-      Break it down into 4-6 main logical branches and 3-5 key details/sub-points for each branch.
-      The level should be suitable for higher education students but clear enough for high schoolers.
-      Use professional yet engaging academic terminology.`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              topic: { type: Type.STRING, description: "The central core topic" },
-              branches: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    label: { type: Type.STRING, description: "Main branch category" },
-                    details: {
-                      type: Type.ARRAY,
-                      items: { type: Type.STRING, description: "Specific sub-point or detail" }
-                    }
-                  },
-                  required: ["label", "details"]
-                }
-              }
-            },
-            required: ["topic", "branches"]
-          }
-        }
+      const response = await fetch("/api/generate-mindmap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic }),
       });
 
-      const rawText = response.text || "";
-      if (!rawText) throw new Error("AI ne koi response nahi bheja. Phir se try karein!");
-      
-      // Robust JSON extraction: remove markdown code blocks if present
-      const cleanJson = rawText.replace(/```json|```/gi, "").trim();
-      let data: MindMapData;
-      try {
-        data = JSON.parse(cleanJson) as MindMapData;
-      } catch (parseErr) {
-        console.error("JSON Parse Error. Raw text:", rawText);
-        throw new Error("AI response parse nahi ho paya. Please try a different topic.");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || errorData.error || "Server error");
       }
 
+      const data = await response.json();
+      
       transformToFlow(data);
       
       // Automatically fit view after a slightly longer delay to ensure DOM is ready
@@ -143,17 +107,10 @@ function MindMapInner() {
       }, 300);
     } catch (err: any) {
       console.error("Mind map generation error:", err);
-      if (err.message?.includes("API_KEY")) {
-        setError({ 
-          message: "Arey! Gemini API key missing hai. Please settings mein jaake apna key manage karein.", 
-          type: 'warning' 
-        });
-      } else {
-        setError({ 
-          message: "Kuch gadbad ho gayi! " + (err.message || "Please try again later."), 
-          type: 'error' 
-        });
-      }
+      setError({ 
+        message: "Kuch gadbad ho gayi! " + (err.message || "Please try again later."), 
+        type: 'error' 
+      });
     } finally {
       setIsGenerating(false);
     }

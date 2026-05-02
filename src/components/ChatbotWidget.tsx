@@ -295,26 +295,24 @@ ${history.length > 5 ? "User shows consistent academic focus but occasional slee
 
     const callGemini = async (modelName: string, retryCount = 0): Promise<any> => {
       try {
-        const ai = getGeminiAI();
-        return await ai.models.generateContent({
-          model: modelName,
-          contents: contents,
-          config: {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            contents, 
             systemInstruction: customSystemInstruction,
-            thinkingConfig: isDeepThinking ? { thinkingLevel: ThinkingLevel.HIGH } : undefined
-          }
+            thinkingConfig: isDeepThinking ? { thinkingLevel: 'HIGH' } : undefined
+          }),
         });
-      } catch (err: any) {
-        const msg = err?.message?.toLowerCase() || "";
-        const isQuotaError = msg.includes("429") || msg.includes("quota");
-        
-        // If it's a quota error and we haven't tried the lightest model yet
-        if (isQuotaError && retryCount < 2) {
-          console.warn(`Quota hit for ${modelName}, falling back...`);
-          const fallbackModel = retryCount === 0 ? "gemini-3-flash-preview" : "gemini-3.1-flash-lite-preview";
-          return await callGemini(fallbackModel, retryCount + 1);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.details || errorData.error || "Server error");
         }
-        throw err; // Rethrow if not a quota error or out of retries
+
+        return await response.json();
+      } catch (err: any) {
+        throw err;
       }
     };
 
